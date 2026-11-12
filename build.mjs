@@ -16,7 +16,9 @@ for (const f of fs.existsSync(icons) ? fs.readdirSync(icons) : []) copy(path.joi
 fs.writeFileSync(path.join(dist, '.nojekyll'), '');
 
 const files = [];
-const walk = (dir) => { for (const f of fs.readdirSync(dir)) { const p = path.join(dir, f); if (fs.statSync(p).isDirectory()) walk(p); else if (!f.startsWith('.')) files.push(path.relative(dist, p)); } };
+// Папка data/ (погода из GitHub Actions) меняется каждые 30 минут: в версию и офлайн-список её не включаем,
+// иначе Пульт перезагружался бы после каждой выкладки погоды.
+const walk = (dir) => { for (const f of fs.readdirSync(dir)) { const p = path.join(dir, f); if (fs.statSync(p).isDirectory()) walk(p); else if (!f.startsWith('.') && !path.relative(dist, p).startsWith('data' + path.sep)) files.push(path.relative(dist, p)); } };
 walk(dist);
 const hash = crypto.createHash('sha256');
 for (const f of files.sort()) hash.update(f).update(fs.readFileSync(path.join(dist, f)));

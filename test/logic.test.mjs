@@ -237,3 +237,13 @@ test('курсы ЦБ: разбор, номинал, изменение', () => 
   assert.equal(L.formatRate(81.2), '81,20');
   assert.equal(L.parseRates({}), null);
 });
+test('погода с сайта Пульта: только тот же город и свежая', () => {
+  const forecast = { current: { temperature_2m: 9, weather_code: 3 }, daily: { time: [T], weather_code: [3], temperature_2m_max: [10], temperature_2m_min: [4] } };
+  const now = Date.parse('2026-11-12T14:00:00Z');
+  const j = { lat: 43.585, lon: 39.72, fetchedAt: '2026-11-12T13:37:00Z', forecast, air: { current: { european_aqi: 20 } } };
+  const w = L.parseSiteWeather(j, 43.6, 39.7, now);
+  assert.equal(w.data.temp, 9); assert.equal(w.air.text, 'хороший'); assert.equal(w.at, Date.parse(j.fetchedAt));
+  assert.equal(L.parseSiteWeather(j, 55.75, 37.6, now), null);
+  assert.equal(L.parseSiteWeather(j, 43.585, 39.72, now + 4 * 3600000), null);
+  assert.equal(L.parseSiteWeather(null, 1, 1, now), null);
+});

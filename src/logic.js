@@ -184,6 +184,15 @@ export function rainNowcast(rain, nowMs) {
   const start = slots.findIndex(wet);
   return start < 0 ? { wet: false, text: 'Без осадков в ближайшие 2 часа' } : { wet: true, text: `Осадки начнутся примерно через ${fmt(mins(start))}` };
 }
+/** Погода с сайта Пульта (data/weather.json из GitHub Actions) — только если это тот же город и данные не старше 3 часов. */
+export function parseSiteWeather(j, lat, lon, nowMs) {
+  if (!j || !j.forecast) return null;
+  if (Math.abs(Number(j.lat) - lat) > 0.25 || Math.abs(Number(j.lon) - lon) > 0.25) return null;
+  const at = Date.parse(j.fetchedAt) || 0;
+  if (!at || nowMs - at > 3 * 3600000) return null;
+  const data = parseWeather(j.forecast);
+  return data ? { data, air: parseAir(j.air), at } : null;
+}
 export function airUrl(lat, lon) { return `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=european_aqi,pm2_5`; }
 /** Европейский индекс качества воздуха → оценка по-русски. */
 export function parseAir(j) {

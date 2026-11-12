@@ -451,10 +451,13 @@ async function loadWeather(force) {
   try {
     let data = null, errs = [];
     try { data = L.parseWeather(await getJson(L.weatherUrl(lat, lon))); if (!data) errs.push('Open-Meteo: формат'); } catch (e) { errs.push('Open-Meteo: ' + (e && e.name === 'AbortError' ? 'таймаут' : (e && e.message) || 'ошибка')); }
+    let site = null;
+    if (!data) { try { site = L.parseSiteWeather(await getJson('./data/weather.json'), lat, lon, Date.now()); if (site) data = site.data; else errs.push('сайт Пульта: нет свежей погоды для этого города'); } catch (e) { errs.push('сайт Пульта: ' + (e && e.name === 'AbortError' ? 'таймаут' : (e && e.message) || 'ошибка')); } }
     if (!data) { try { data = L.parseWttr(await getJson(L.wttrUrl(lat, lon))); if (!data) errs.push('wttr.in: формат'); } catch (e) { errs.push('wttr.in: ' + (e && e.name === 'AbortError' ? 'таймаут' : (e && e.message) || 'ошибка')); } }
     if (!data) throw new Error(errs.join('; '));
-    let air = null; try { air = L.parseAir(await getJson(L.airUrl(lat, lon))); } catch { /* воздух не обязателен */ }
-    S.weather = { lat, lon, at: Date.now(), data, air }; ui.wxState = 'ok'; ui.wxError = ''; save();
+    let air = site ? site.air : null;
+    if (!site) { try { air = L.parseAir(await getJson(L.airUrl(lat, lon))); } catch { /* воздух не обязателен */ } }
+    S.weather = { lat, lon, at: site ? site.at : Date.now(), data, air, via: site ? 'site' : '' }; ui.wxState = 'ok'; ui.wxError = ''; save();
   } catch (e) { ui.wxState = 'fail'; ui.wxError = (e && e.message) || ''; }
   if (ui.tab === 'home') render();
 }
