@@ -103,3 +103,12 @@ if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
   addEventListener('pagehide', () => flush());
 }
+
+const PHOTOS = 'photos';
+/** Фото для режима «рамки»: отдельный ключ, чтобы не раздувать основное состояние и резервную копию. */
+export async function loadPhotos() {
+  try { const v = await idb('readonly', (s) => s.get(PHOTOS)); return Array.isArray(v) ? v : []; } catch { return []; }
+}
+export async function savePhotos(list) {
+  try { await idb('readwrite', (s) => s.put(list, PHOTOS)); return true; } catch { return false; }
+}

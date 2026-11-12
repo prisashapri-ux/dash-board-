@@ -138,17 +138,17 @@ test('разбор ответа Open-Meteo и формат температур�
 test('адрес запроса погоды идёт только на Open-Meteo', () => {
   assert.ok(L.weatherUrl(43.585, 39.72).startsWith('https://api.open-meteo.com/v1/forecast?latitude=43.585&longitude=39.72'));
 });
-test('projects.json: 10 проектов, корректные этапы и уникальные id', () => {
+test('projects.json: 7 проектов, корректные этапы и уникальные id', () => {
   const j = JSON.parse(fs.readFileSync(new URL('../src/projects.json', import.meta.url), 'utf8'));
-  assert.equal(j.projects.length, 10);
+  assert.equal(j.projects.length, 7);
   const ids = new Set();
   for (const p of j.projects) {
     assert.ok(L.STAGES.includes(p.stage), p.id);
     assert.ok(p.progress >= 0 && p.progress <= 100);
-    assert.ok(p.tasks.length > 0 && p.updated === '2026-11-12T12:00:00Z' && p.deadline === null);
+    assert.ok(p.tasks.length > 0 && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(p.updated) && p.deadline === null);
     for (const t of p.tasks) { assert.ok(!ids.has(t.id)); ids.add(t.id); }
   }
-  assert.equal(j.projects.find((p) => p.id === 'video2d').subtitle, 'Жизнь на каждом уровне');
+  assert.deepEqual(j.projects.map((p) => p.id), ['mimi', 'twitch', 'gamevideo', 'vlog', 'video2d', 'video2d-ru', 'pult']);
 });
 
 test('wttr.in: разбор ответа и перевод кодов', () => {
@@ -172,4 +172,68 @@ test('лимиты Claude: разбор гиста, время сброса, «�
   assert.equal(L.formatReset(thu.getTime(), now), 'Чт 10:00');
   assert.equal(L.formatAgo(now.getTime() - 5 * 60000, now.getTime()), '5 мин назад');
   assert.equal(L.formatAgo(now.getTime(), now.getTime()), 'только что');
+});
+
+test('осадки на 2 часа: сухо, начнутся, идут и закончатся, устаревший прогноз', () => {
+  const time = Array.from({ length: 16 }, (_, k) => { const m = 16 * 60 + k * 15; return `2026-11-12T${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; });
+  const now = Date.UTC(2026, 10, 12, 13, 20); // 16:20 в Сочи (UTC+3)
+  const mk = (mm) => ({ time, mm, offset: 10800 });
+  assert.equal(L.rainNowcast(mk(time.map(() => 0)), now).text, 'Без осадков в ближайшие 2 часа');
+  const later = time.map((_, k) => (k >= 3 ? 0.4 : 0));
+  assert.equal(L.rainNowcast(mk(later), now).text, 'Осадки начнутся примерно через 30 мин');
+  const nowWet = time.map((_, k) => (k < 6 ? 1 : 0));
+  assert.equal(L.rainNowcast(mk(nowWet), now).text, 'Осадки сейчас, закончатся примерно через 1 ч 15 мин');
+  assert.equal(L.rainNowcast(mk(time.map(() => 1)), now).text, 'Осадки идут и не закончатся в ближайшие 2 часа');
+  assert.equal(L.rainNowcast(mk(time.map(() => 0)), Date.UTC(2026, 10, 13, 13, 0)), null);
+  assert.equal(L.rainNowcast(null, now), null);
+});
+test('погода: восход, закат и ряд осадков из ответа Open-Meteo', () => {
+  const w = L.parseWeather({ utc_offset_seconds: 10800, current: { temperature_2m: 10, weather_code: 0 }, daily: { time: [T], weather_code: [0], temperature_2m_max: [12], temperature_2m_min: [5], sunrise: ['2026-11-12T07:01'], sunset: ['2026-11-12T16:52'] }, minutely_15: { time: ['2026-11-12T16:00'], precipitation: [0] } });
+  assert.equal(w.sunrise, '07:01'); assert.equal(w.sunset, '16:52'); assert.equal(w.rain.offset, 10800);
+  assert.ok(L.weatherUrl(1, 2).includes('minutely_15=precipitation'));
+});
+test('качество воздуха: оценки по европейскому индексу', () => {
+  assert.equal(L.parseAir({ current: { european_aqi: 15, pm2_5: 4.2 } }).text, 'хороший');
+  assert.equal(L.parseAir({ current: { european_aqi: 55 } }).level, 'warn');
+  assert.equal(L.parseAir({ current: { european_aqi: 90 } }).text, 'очень плохой');
+  assert.equal(L.parseAir({}), null);
+  assert.ok(L.airUrl(1, 2).startsWith('https://air-quality-api.open-meteo.com/'));
+});
+test('отсчёты: дни до даты, склонение, ближайшие без прошедших', () => {
+  assert.equal(L.daysUntil(T, '2026-12-05'), 23);
+  assert.equal(L.formatDaysLeft(0), 'сегодня'); assert.equal(L.formatDaysLeft(1), 'завтра');
+  assert.equal(L.formatDaysLeft(21), 'через 21 день'); assert.equal(L.formatDaysLeft(23), 'через 23 дня'); assert.equal(L.formatDaysLeft(12), 'через 12 дней');
+  const u = L.upcomingCountdowns([{ title: 'b', date: '2027-01-01' }, { title: 'old', date: '2026-11-01' }, { title: 'a', date: '2026-11-20' }], T);
+  assert.deepEqual(u.map((c) => c.title), ['a', 'b']);
+});
+test('прогресс года, месяца и недели', () => {
+  const p = L.periodProgress(new Date(2026, 10, 12, 12, 0));
+  assert.equal(p.year, 86); assert.equal(p.month, 38); assert.equal(p.week, 50);
+  assert.equal(L.periodProgress(new Date(2026, 0, 1, 0, 0)).year, 0);
+});
+test('цели: что пора оценить и итог периода', () => {
+  const goals = [
+    { id: 1, period: '2026-10', status: null }, { id: 2, period: '2026-11', status: null },
+    { id: 3, period: '2026-10', status: 'done' }, { id: 4, period: '2025', status: null }, { id: 5, period: '2026', status: null },
+  ];
+  assert.deepEqual(L.goalsToReview(goals, T).map((g) => g.id), [1, 4]);
+  assert.deepEqual(L.goalsToReview(goals, '2026-11-30').map((g) => g.id), [1, 2, 4]);
+  assert.deepEqual(L.goalsToReview(goals, '2026-12-31').map((g) => g.id), [1, 2, 4, 5]);
+  assert.deepEqual(L.goalsSummary(goals, '2026-10'), { total: 2, done: 1, partial: 0, fail: 0 });
+  assert.equal(L.periodName('2026-11'), 'ноябрь 2026'); assert.equal(L.periodName('2026'), '2026 год');
+});
+test('дневник: ряд оценок и среднее, рутина, день недели', () => {
+  const s = L.moodSeries({ [T]: { mood: 4 }, '2026-11-11': { mood: 2 } }, T, 3);
+  assert.deepEqual(s.map((x) => x.mood), [0, 2, 4]);
+  assert.equal(L.moodAverage(s), 3); assert.equal(L.moodAverage([]), 0);
+  assert.deepEqual(L.routineProgress([{ id: 'a' }, { id: 'b' }], ['b', 'x']), { done: 1, total: 2 });
+  assert.equal(L.weekdayIndex(T), 3); assert.equal(L.weekdayIndex('2026-11-16'), 0);
+});
+test('курсы ЦБ: разбор, номинал, изменение', () => {
+  const r = L.parseRates({ Date: '2026-11-12T11:30:00+03:00', Valute: { USD: { Nominal: 1, Value: 81.234, Previous: 81.5 }, CNY: { Nominal: 10, Value: 112.5, Previous: 112 } } });
+  assert.equal(r.date, '2026-11-12');
+  assert.deepEqual(r.list.map((x) => x.code), ['USD', 'CNY']);
+  assert.equal(r.list[0].value, 81.23); assert.equal(r.list[0].diff, -0.27); assert.equal(r.list[1].value, 11.25);
+  assert.equal(L.formatRate(81.2), '81,20');
+  assert.equal(L.parseRates({}), null);
 });

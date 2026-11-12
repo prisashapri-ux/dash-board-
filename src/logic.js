@@ -7,6 +7,11 @@ export const DEFAULT_SETTINGS = {
   city: 'Сочи', lat: 43.585, lon: 39.72,
   morningFrom: 5, dayFrom: 12, eveningFrom: 18,
   night: 'auto', mode: 'auto', twitch: '', youtube: '', claudeGist: '',
+  keepAwake: true, ambientMin: 5, ambientPhotos: true, nightDim: 30,
+};
+export const DEFAULT_ROUTINES = {
+  morning: ['Стакан воды', 'Зарядка', 'Прогулка с собаками', 'План на день'],
+  evening: ['Итоги дня', 'План на завтра', 'Телефон на зарядку', 'Лечь до полуночи'],
 };
 
 const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
@@ -149,10 +154,44 @@ export function formatTemp(v) { if (v == null || Number.isNaN(Number(v))) return
 export function parseWeather(j) {
   if (!j?.current || !j?.daily?.time) return null;
   const d = j.daily, row = (i) => ({ date: d.time[i], min: d.temperature_2m_min[i], max: d.temperature_2m_max[i], code: d.weather_code[i] });
-  return { temp: j.current.temperature_2m, code: j.current.weather_code, today: row(0), tomorrow: d.time.length > 1 ? row(1) : null };
+  const m = j.minutely_15;
+  const rain = m && Array.isArray(m.time) && Array.isArray(m.precipitation) ? { time: m.time, mm: m.precipitation, offset: Number(j.utc_offset_seconds) || 0 } : null;
+  const hm = (v) => (typeof v === 'string' && v.length >= 16 ? v.slice(11, 16) : null);
+  return {
+    temp: j.current.temperature_2m, code: j.current.weather_code, today: row(0), tomorrow: d.time.length > 1 ? row(1) : null,
+    sunrise: hm(d.sunrise && d.sunrise[0]), sunset: hm(d.sunset && d.sunset[0]), rain,
+  };
 }
 export function weatherUrl(lat, lon) {
-  return `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=2`;
+  return `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset&minutely_15=precipitation&forecast_minutely_15=16&timezone=auto&forecast_days=2`;
+}
+/** Осадки на ближайшие 2 часа по 15-минутному прогнозу. nowMs — текущее время, offset — сдвиг часового пояса места. */
+export function rainNowcast(rain, nowMs) {
+  if (!rain || !rain.time || !rain.time.length) return null;
+  const local = new Date(nowMs + rain.offset * 1000).toISOString().slice(0, 16);
+  const next = rain.time.findIndex((t) => t > local);
+  if (next < 0) return null; // прогноз устарел
+  const i = Math.max(0, next - 1); // текущий 15-минутный отрезок
+  const slots = rain.time.slice(i, i + 8).map((t, k) => ({ t, mm: Number(rain.mm[i + k]) || 0 }));
+  if (slots.length < 4) return null;
+  const wet = (s) => s.mm >= 0.1;
+  const mins = (k) => k * 15;
+  const fmt = (m) => (m < 60 ? `${m} мин` : m % 60 ? `${Math.floor(m / 60)} ч ${m % 60} мин` : `${m / 60} ч`);
+  if (wet(slots[0])) {
+    const end = slots.findIndex((s) => !wet(s));
+    return { wet: true, text: end < 0 ? 'Осадки идут и не закончатся в ближайшие 2 часа' : `Осадки сейчас, закончатся примерно через ${fmt(mins(end))}` };
+  }
+  const start = slots.findIndex(wet);
+  return start < 0 ? { wet: false, text: 'Без осадков в ближайшие 2 часа' } : { wet: true, text: `Осадки начнутся примерно через ${fmt(mins(start))}` };
+}
+export function airUrl(lat, lon) { return `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=european_aqi,pm2_5`; }
+/** Европейский индекс качества воздуха → оценка по-русски. */
+export function parseAir(j) {
+  const v = j && j.current && j.current.european_aqi;
+  if (v == null || Number.isNaN(Number(v))) return null;
+  const n = Math.round(Number(v));
+  const lvl = n <= 20 ? ['хороший', 'ok'] : n <= 40 ? ['нормальный', 'ok'] : n <= 60 ? ['умеренный', 'warn'] : n <= 80 ? ['плохой', 'bad'] : ['очень плохой', 'bad'];
+  return { aqi: n, text: lvl[0], level: lvl[1], pm25: j.current.pm2_5 == null ? null : Math.round(Number(j.current.pm2_5)) };
 }
 /** Запасной источник — wttr.in: его коды погоды (WWO) → коды WMO. */
 const WWO = [[[113], 0], [[116], 2], [[119, 122], 3], [[143, 248, 260], 45], [[176, 263, 266, 293, 296, 353], 61],
@@ -199,3 +238,84 @@ export function formatAgo(ms, now) {
   if (m < 48 * 60) return Math.round(m / 60) + ' ч назад';
   return Math.round(m / 1440) + ' дн. назад';
 }
+
+/* ---------- Отсчёты, прогресс периода, цели ---------- */
+/** Сколько дней от today до date (ГГГГ-ММ-ДД), отрицательно — уже прошло. */
+export function daysUntil(today, date) { return Math.round((fromISO(date) - fromISO(today)) / 86400000); }
+export function plural(n, one, few, many) {
+  const a = Math.abs(n) % 100, b = a % 10;
+  return a > 10 && a < 20 ? many : b === 1 ? one : b >= 2 && b <= 4 ? few : many;
+}
+export function formatDaysLeft(n) {
+  if (n === 0) return 'сегодня';
+  if (n === 1) return 'завтра';
+  return `через ${n} ${plural(n, 'день', 'дня', 'дней')}`;
+}
+/** Ближайшие отсчёты: прошедшие убираем, сортируем по дате. */
+export function upcomingCountdowns(list, today, n = 3) {
+  return (list || []).map((c) => ({ ...c, left: daysUntil(today, c.date) })).filter((c) => c.left >= 0).sort((a, b) => a.left - b.left).slice(0, n);
+}
+/** Прогресс года, месяца и недели (неделя с понедельника) в процентах. */
+export function periodProgress(now) {
+  const y = now.getFullYear(), ms = now.getTime();
+  const pct = (a, b) => Math.max(0, Math.min(100, Math.floor(((ms - a) / (b - a)) * 100)));
+  const wd = (now.getDay() + 6) % 7;
+  const w0 = new Date(y, now.getMonth(), now.getDate() - wd).getTime();
+  return {
+    year: pct(new Date(y, 0, 1).getTime(), new Date(y + 1, 0, 1).getTime()),
+    month: pct(new Date(y, now.getMonth(), 1).getTime(), new Date(y, now.getMonth() + 1, 1).getTime()),
+    week: pct(w0, new Date(y, now.getMonth(), now.getDate() - wd + 7).getTime()),
+  };
+}
+const MONTHS_NOM = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'];
+/** «ноябрь 2026» для ГГГГ-ММ, «2026 год» для ГГГГ. */
+export function periodName(period) {
+  if (/^\d{4}-\d{2}$/.test(period)) return `${MONTHS_NOM[Number(period.slice(5)) - 1]} ${period.slice(0, 4)}`;
+  return `${period} год`;
+}
+export const GOAL_STATUS = { done: 'Выполнена', partial: 'Частично', fail: 'Не вышло' };
+/** Цели, которые пора оценить: период закончился (или сегодня его последний день), а оценки нет. */
+export function goalsToReview(goals, today) {
+  const month = today.slice(0, 7), year = today.slice(0, 4);
+  const lastDayOfMonth = Number(today.slice(8)) === daysInMonth(today), lastDayOfYear = today.slice(5) === '12-31';
+  return (goals || []).filter((g) => {
+    if (g.status) return false;
+    if (g.period.length === 7) return g.period < month || (g.period === month && lastDayOfMonth);
+    return g.period < year || (g.period === year && lastDayOfYear);
+  });
+}
+/** Итог по периоду: сколько целей выполнено, частично, не вышло. */
+export function goalsSummary(goals, period) {
+  const list = (goals || []).filter((g) => g.period === period);
+  const c = { total: list.length, done: 0, partial: 0, fail: 0 };
+  for (const g of list) if (c[g.status] != null) c[g.status]++;
+  return c;
+}
+
+/* ---------- Дневник дня ---------- */
+export const MOODS = ['😞', '🙁', '😐', '🙂', '😄'];
+/** Оценки дня за последние n дней (старые слева). */
+export function moodSeries(journal, today, n = 14) {
+  return Array.from({ length: n }, (_, i) => { const date = addDays(today, i - n + 1); const e = journal && journal[date]; return { date, weekday: weekdayShort(date), mood: e && e.mood ? e.mood : 0 }; });
+}
+export function moodAverage(series) { const v = series.filter((x) => x.mood); return v.length ? Math.round((v.reduce((s, x) => s + x.mood, 0) / v.length) * 10) / 10 : 0; }
+
+/* ---------- Рутины ---------- */
+export function routineProgress(steps, checks) { const ids = new Set(checks || []); const done = steps.filter((s) => ids.has(s.id)).length; return { done, total: steps.length }; }
+
+/* ---------- Меню недели ---------- */
+export const WEEK_RU = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+/** Индекс дня недели с понедельника (0) для ГГГГ-ММ-ДД. */
+export function weekdayIndex(iso) { return (fromISO(iso).getDay() + 6) % 7; }
+
+/* ---------- Курсы ЦБ ---------- */
+export const RATES_URL = 'https://www.cbr-xml-daily.ru/daily_json.js';
+/** Ответ cbr-xml-daily.ru → курсы доллара, евро и юаня с изменением. */
+export function parseRates(j) {
+  const v = j && j.Valute;
+  if (!v) return null;
+  const one = (code) => { const x = v[code]; if (!x || !x.Value) return null; const nom = Number(x.Nominal) || 1; const val = x.Value / nom, prev = (x.Previous || x.Value) / nom; return { code, value: Math.round(val * 100) / 100, diff: Math.round((val - prev) * 100) / 100 }; };
+  const list = ['USD', 'EUR', 'CNY'].map(one).filter(Boolean);
+  return list.length ? { date: String(j.Date || '').slice(0, 10), list } : null;
+}
+export function formatRate(n) { return Number(n).toFixed(2).replace('.', ','); }

@@ -42,7 +42,7 @@
     }
    ],
    "note": "",
-   "updated": "2026-11-12T12:00:00Z"
+   "updated": "2026-11-12T16:30:00Z"
   },
   {
    "id": "twitch",
@@ -79,49 +79,12 @@
     }
    ],
    "note": "",
-   "updated": "2026-11-12T12:00:00Z"
-  },
-  {
-   "id": "video2d",
-   "name": "2D-ролики «Your Life at Every Rank»",
-   "subtitle": "Жизнь на каждом уровне",
-   "emoji": "🎬",
-   "stage": "План",
-   "progress": 25,
-   "next": "Первый ролик",
-   "deadline": null,
-   "tasks": [
-    {
-     "id": "video2d-1",
-     "title": "Стиль персонажа — стикмен тушью",
-     "done": true,
-     "due": null
-    },
-    {
-     "id": "video2d-2",
-     "title": "Фоны в 3D-мире",
-     "done": false,
-     "due": null
-    },
-    {
-     "id": "video2d-3",
-     "title": "Озвучка ElevenLabs (голос Flint)",
-     "done": false,
-     "due": null
-    },
-    {
-     "id": "video2d-4",
-     "title": "Первый ролик",
-     "done": false,
-     "due": null
-    }
-   ],
-   "note": "",
-   "updated": "2026-11-12T12:00:00Z"
+   "updated": "2026-11-12T16:30:00Z"
   },
   {
    "id": "gamevideo",
-   "name": "Игровые видео (Dota 2)",
+   "name": "YouTube — игровой канал",
+   "subtitle": "Dota 2",
    "emoji": "🕹",
    "stage": "В работе",
    "progress": 35,
@@ -154,164 +117,116 @@
     }
    ],
    "note": "",
-   "updated": "2026-11-12T12:00:00Z"
+   "updated": "2026-11-12T16:30:00Z"
   },
   {
-   "id": "fitapp",
-   "name": "Приложение «Форма»",
-   "emoji": "💪",
-   "stage": "В работе",
-   "progress": 60,
-   "next": "Сборка на iPhone через xtool",
-   "deadline": null,
-   "tasks": [
-    {
-     "id": "fitapp-1",
-     "title": "Веб-версия на GitHub Pages",
-     "done": true,
-     "due": null
-    },
-    {
-     "id": "fitapp-2",
-     "title": "Сборка через xtool",
-     "done": false,
-     "due": null
-    }
-   ],
-   "note": "",
-   "updated": "2026-11-12T12:00:00Z"
-  },
-  {
-   "id": "shed",
-   "name": "Сарайка",
-   "emoji": "🔨",
-   "stage": "В работе",
-   "progress": 50,
-   "next": "Утепление пеноплэксом",
-   "deadline": null,
-   "tasks": [
-    {
-     "id": "shed-1",
-     "title": "Каркас",
-     "done": true,
-     "due": null
-    },
-    {
-     "id": "shed-2",
-     "title": "Обшивка OSB 9 мм",
-     "done": false,
-     "due": null
-    },
-    {
-     "id": "shed-3",
-     "title": "Утепление пеноплэксом 50 мм",
-     "done": false,
-     "due": null
-    },
-    {
-     "id": "shed-4",
-     "title": "Вентиляция: КИВ-125 + вытяжка с клапаном",
-     "done": false,
-     "due": null
-    },
-    {
-     "id": "shed-5",
-     "title": "Профнастил стены — серый",
-     "done": false,
-     "due": null
-    },
-    {
-     "id": "shed-6",
-     "title": "Крыша — шоколад",
-     "done": false,
-     "due": null
-    },
-    {
-     "id": "shed-7",
-     "title": "Дверь ПВХ и собачья дверца",
-     "done": false,
-     "due": null
-    }
-   ],
-   "note": "",
-   "updated": "2026-11-12T12:00:00Z"
-  },
-  {
-   "id": "clip",
-   "name": "Клип-поздравление",
-   "emoji": "🎤",
-   "stage": "В работе",
-   "progress": 50,
-   "next": "Снять кринж-клип",
-   "deadline": null,
-   "tasks": [
-    {
-     "id": "clip-1",
-     "title": "Песня в Suno",
-     "done": true,
-     "due": null
-    },
-    {
-     "id": "clip-2",
-     "title": "Снять клип",
-     "done": false,
-     "due": null
-    }
-   ],
-   "note": "",
-   "updated": "2026-11-12T12:00:00Z"
-  },
-  {
-   "id": "tvbox",
-   "name": "ТВ-приставка — чистый экран",
-   "emoji": "📺",
+   "id": "vlog",
+   "name": "YouTube — влог",
+   "emoji": "📹",
    "stage": "Идея",
    "progress": 5,
-   "next": "Очистить через ADB",
+   "next": "Придумать формат и первый выпуск",
    "deadline": null,
    "tasks": [
     {
-     "id": "tvbox-1",
-     "title": "Очистить экран через ADB",
-     "done": false,
-     "due": null
-    }
-   ],
-   "note": "",
-   "updated": "2026-11-12T12:00:00Z"
-  },
-  {
-   "id": "pc",
-   "name": "Домашний ПК — автоматизация",
-   "emoji": "🖥",
-   "stage": "План",
-   "progress": 15,
-   "next": "Автовключение в 8:00",
-   "deadline": null,
-   "tasks": [
-    {
-     "id": "pc-1",
-     "title": "Автовключение в 8:00 + VPN",
+     "id": "vlog-1",
+     "title": "Формат и длина выпусков",
      "done": false,
      "due": null
     },
     {
-     "id": "pc-2",
-     "title": "Раздельный туннель AmneziaVPN",
+     "id": "vlog-2",
+     "title": "Название и оформление канала",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "vlog-3",
+     "title": "Снять первый выпуск",
      "done": false,
      "due": null
     }
    ],
    "note": "",
-   "updated": "2026-11-12T12:00:00Z"
+   "updated": "2026-11-12T16:30:00Z"
+  },
+  {
+   "id": "video2d",
+   "name": "2D-анимации EN",
+   "subtitle": "«Your Life at Every Rank» — жизнь на каждом уровне",
+   "emoji": "🎬",
+   "stage": "План",
+   "progress": 25,
+   "next": "Первый ролик",
+   "deadline": null,
+   "tasks": [
+    {
+     "id": "video2d-1",
+     "title": "Стиль персонажа — стикмен тушью",
+     "done": true,
+     "due": null
+    },
+    {
+     "id": "video2d-2",
+     "title": "Фоны в 3D-мире",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "video2d-3",
+     "title": "Озвучка ElevenLabs (голос Flint)",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "video2d-4",
+     "title": "Первый ролик",
+     "done": false,
+     "due": null
+    }
+   ],
+   "note": "",
+   "updated": "2026-11-12T16:30:00Z"
+  },
+  {
+   "id": "video2d-ru",
+   "name": "2D-анимации RU",
+   "subtitle": "Русскоязычная версия роликов",
+   "emoji": "🎞",
+   "stage": "Идея",
+   "progress": 5,
+   "next": "Выбрать первую тему",
+   "deadline": null,
+   "tasks": [
+    {
+     "id": "video2d-ru-1",
+     "title": "Тема и сценарий первого ролика",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "video2d-ru-2",
+     "title": "Русский голос для озвучки",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "video2d-ru-3",
+     "title": "Первый ролик",
+     "done": false,
+     "due": null
+    }
+   ],
+   "note": "",
+   "updated": "2026-11-12T16:30:00Z"
   },
   {
    "id": "pult",
    "name": "Пульт на iPad",
    "emoji": "📟",
    "stage": "В работе",
-   "progress": 30,
-   "next": "Поставить на iPad",
+   "progress": 45,
+   "next": "Поставить на iPad и проверить",
    "deadline": null,
    "tasks": [
     {
@@ -322,13 +237,31 @@
     },
     {
      "id": "pult-2",
-     "title": "2D-версия",
+     "title": "Первая версия на GitHub Pages",
+     "done": true,
+     "due": null
+    },
+    {
+     "id": "pult-5",
+     "title": "Идеи из похожих проектов",
+     "done": true,
+     "due": null
+    },
+    {
+     "id": "pult-6",
+     "title": "Поставить на iPad и проверить погоду",
      "done": false,
      "due": null
     },
     {
      "id": "pult-3",
      "title": "Notion и календарь",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "pult-7",
+     "title": "Статистика Twitch и YouTube",
      "done": false,
      "due": null
     },
@@ -340,7 +273,7 @@
     }
    ],
    "note": "",
-   "updated": "2026-11-12T12:00:00Z"
+   "updated": "2026-11-12T16:30:00Z"
   }
  ]
 }
