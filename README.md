@@ -37,3 +37,19 @@ npm run icons   # перерисовывает иконки в icons/
 ## Как Claude обновляет проекты
 
 Claude правит `src/projects.json` (этап, прогресс, следующий шаг, задачи) и ставит в изменённом проекте `updated` с текущей датой и временем в формате ISO, например `2026-11-12T12:00:00Z`. Если правка нужна поверх локальной, `updated` должен быть новее локального. После коммита и пуша в `main` страница пересобирается, и при следующем запуске iPad подтягивает свежий файл (или по кнопке «Обновить проекты»).
+
+## Лимиты Claude
+
+На главной есть плашки «Текущая сессия» и «Все модели за неделю», как в настройках Claude. Официального способа прочитать их из браузера нет, поэтому цифры идут так: Claude Code на ПК передаёт лимиты своей строке состояния, скрипт `tools/pult-usage.ps1` пишет их в гист GitHub, а Пульт раз в 2 минуты читает этот гист. Лимиты общие для аккаунта, но обновляются, только пока на ПК работает Claude Code.
+
+Настройка на Windows-ПК один раз:
+
+1. Создай гист на gist.github.com: файл `claude-usage.json`, содержимое `{}`, «Create secret gist». Скопируй ID из адреса (часть после имени пользователя).
+2. Создай токен: github.com → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token, галочка только `gist`.
+3. Скачай `tools/pult-usage.ps1`, например в `C:\Users\<имя>\pult-usage.ps1`.
+4. В PowerShell: `setx PULT_GIST_ID "<ID гиста>"` и `setx PULT_GIST_TOKEN "<токен>"`, потом перезапусти Claude Code.
+5. В `C:\Users\<имя>\.claude\settings.json` добавь:
+   `"statusLine": { "type": "command", "command": "powershell -NoProfile -ExecutionPolicy Bypass -File C:\\Users\\<имя>\\pult-usage.ps1" }`
+6. В Пульте: Ещё → Настройки → «Лимиты Claude» → вставь ID гиста.
+
+Токен хранится только на ПК. В Пульт и в гист попадают только проценты и время сброса.

@@ -124,3 +124,6 @@ label.lbl { display: block; font-size: 13px; color: var(--muted); margin: 8px 0 
   .clock { font-size: 64px; } .grid2 > * { -webkit-flex-basis: 100%; flex-basis: 100%; }
   .app { padding-left: 12px; padding-right: 12px; } .addrow > input.num { -webkit-flex-basis: 80px; flex-basis: 80px; }
 }
+.climit { flex: 1 1 260px; min-width: 0; }
+.bar.big { height: 12px; border-radius: 6px; margin: 8px 0 4px; }
+.bar.big > span { background: var(--accent); border-radius: 6px; }

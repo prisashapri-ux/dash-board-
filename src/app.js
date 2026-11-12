@@ -13,7 +13,7 @@ function defaults() {
     habits: { list: L.DEFAULT_HABITS.map((name, i) => ({ id: 'h' + (i + 1), name })), checks: {} },
     finance: { entries: [], budget: 0 },
     settings: { ...L.DEFAULT_SETTINGS },
-    projects: [], remote: { updated: null, projects: [] }, weather: null,
+    projects: [], remote: { updated: null, projects: [] }, weather: null, claude: null,
   };
 }
 let S = defaults();
@@ -76,6 +76,13 @@ function weatherCard() {
 ${tm ? `<div class="kv"><span>Завтра</span><span>${L.formatTemp(d.tomorrow.min)} … ${L.formatTemp(d.tomorrow.max)} · ${esc(tm.text)}</span></div>` : ''}
 <div class="muted tiny">Обновлено в ${L.formatTime(at)}${ui.wxState === 'fail' ? ' · сейчас нет сети, показаны прошлые данные' : ''}</div></section>`;
 }
+function claudeCard() {
+  if (!S.settings.claudeGist) return '';
+  const c = S.claude, now = new Date();
+  const bar = (title, w, resetLbl) => `<div class="grow climit"><div class="row space"><b>${title}</b><span class="muted">${w ? 'Использовано: ' + w.pct + '%' : '—'}</span></div><div class="bar big"><span style="width:${w ? w.pct : 0}%;${w && w.pct >= 90 ? 'background:var(--bad)' : w && w.pct >= 70 ? 'background:var(--warn)' : ''}"></span></div><div class="muted tiny">${w && w.resetsAt ? (w.resetsAt < now.getTime() ? 'Уже сбросился' : resetLbl + ' ' + L.formatReset(w.resetsAt, now)) : ''}</div></div>`;
+  const foot = c ? `Обновлено ${L.formatAgo(c.updatedAt || c.at, now.getTime())}${ui.clState === 'fail' ? ' · сейчас нет связи с GitHub' : ''}` : (ui.clState === 'fail' ? 'Не удалось загрузить. Проверь ID гиста в настройках.' : 'Загружаю…');
+  return `<section class="card"><div class="row space"><h3>Лимиты Claude</h3><button class="btn small ghost" data-act="claude-refresh">Обновить</button></div><div class="row wrap gap">${bar('Текущая сессия', c && c.session, 'Сбросится')}${bar('Все модели за неделю', c && c.week, 'Следующий сброс:')}</div><div class="muted tiny">${esc(foot)}</div></section>`;
+}
 function projectsNext() {
   const top = L.topProjects(projects(), 3);
   return `<section class="card"><h2>Главные проекты</h2>${top.map((p) => `<div class="item"><div class="grow"><div>${esc(p.emoji)} <b>${esc(p.name)}</b></div><div class="muted">Дальше: ${esc(p.next || '—')}</div></div><span class="chip">${p.progress}%</span></div>`).join('') || '<div class="empty">Нет активных проектов</div>'}</section>`;
@@ -87,7 +94,7 @@ function homeView() {
   const now = new Date(), today = todayISO(), tomorrow = L.addDays(today, 1), m = mode();
   const g = L.groupTasks(S.tasks, today);
   const seg = ['auto', 'morning', 'day', 'evening'].map((k, i) => `<button class="${S.settings.mode === k ? 'on' : ''}" data-act="mode" data-mode="${k}">${['Авто', 'Утро', 'День', 'Вечер'][i]}</button>`).join('');
-  let out = `<div class="grid2"><section class="card"><div class="clock" id="clock">${L.formatTime(now)}</div><div class="date" id="date">${esc(L.formatDateRu(now))}</div><div class="muted tiny" style="margin-top:8px">Режим: ${{ morning: 'утро', day: 'день', evening: 'вечер' }[m]}${S.settings.mode === 'auto' ? ' (по времени)' : ' (вручную)'}</div></section>${weatherCard()}</div><div class="seg">${seg}</div>`;
+  let out = `<div class="grid2"><section class="card"><div class="clock" id="clock">${L.formatTime(now)}</div><div class="date" id="date">${esc(L.formatDateRu(now))}</div><div class="muted tiny" style="margin-top:8px">Режим: ${{ morning: 'утро', day: 'день', evening: 'вечер' }[m]}${S.settings.mode === 'auto' ? ' (по времени)' : ' (вручную)'}</div></section>${weatherCard()}</div><div class="seg">${seg}</div>${claudeCard()}`;
   const todayCard = `<section class="card"><h2>Сегодня</h2>${g.overdue.length ? `<div class="chip bad">Просрочено: ${g.overdue.length}</div>${taskList(g.overdue)}` : ''}${taskList(g.today)}${quickTask(today, '+ задача на сегодня')}</section>`;
   if (m === 'morning') out += `<div class="grid2">${todayCard}${projectsNext()}</div>`;
   else if (m === 'day') out += `<div class="grid2">${todayCard}${projectsSummary()}</div>`;
@@ -193,6 +200,8 @@ ${ui.cityResults ? (ui.cityResults.length ? ui.cityResults.map((c, i) => `<div c
 <section class="card"><h2>Резервная копия</h2><p class="muted">Данные лежат только на этом устройстве. Сохрани копию, чтобы перенести их или не потерять.</p>
 <div class="row wrap gap"><button class="btn primary" data-act="export-copy">Скопировать в буфер</button><a class="btn" id="dl" download="pult-backup.json" href="${backupUrl()}" style="display:inline-block;line-height:28px;text-decoration:none;color:var(--text)">Скачать файл</a></div>
 <label class="lbl" style="margin-top:12px">Загрузить копию из файла (заменит данные)</label><input type="file" accept="application/json,.json" data-act-change="import"></section>
+<section class="card"><h2>Лимиты Claude</h2><p class="muted">ID гиста, куда строка состояния Claude Code на ПК пишет лимиты. Как настроить — в README репозитория, раздел «Лимиты Claude».</p>
+<form data-form="save-claude" class="addrow"><input class="wide" name="gist" value="${esc(s.claudeGist)}" placeholder="например, 3f2a…c91" autocomplete="off"><button class="btn primary">Сохранить</button></form></section>
 <section class="card"><h2>Проекты</h2><p class="muted">projects.json обновлён: <b>${esc(S.remote.updated || 'ещё не загружен')}</b></p><button class="btn" data-act="projects-refresh">Обновить проекты</button></section>
 <section class="card"><p class="muted tiny">Пульт · версия ${esc(VERSION)}</p></section>`;
 }
@@ -286,6 +295,15 @@ async function getJson(url) {
   const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 8000);
   try { const r = await fetch(url, { signal: ctl.signal }); if (!r.ok) throw new Error('http ' + r.status); return await r.json(); } finally { clearTimeout(t); }
 }
+async function loadClaude() {
+  const id = S.settings.claudeGist; if (!id) return;
+  try {
+    const d = L.parseClaudeUsage(await getJson('https://api.github.com/gists/' + encodeURIComponent(id)));
+    if (!d) throw new Error('формат');
+    S.claude = { ...d, at: Date.now() }; ui.clState = 'ok'; save();
+  } catch (e) { ui.clState = 'fail'; }
+  if (ui.tab === 'home' && !ui.modal && !document.activeElement?.matches?.('input, textarea, select')) render();
+}
 async function loadWeather(force) {
   const { lat, lon } = S.settings, w = S.weather;
   if (!force && w && w.lat === lat && w.lon === lon && Date.now() - w.at < 30 * 60000) return;
@@ -339,6 +357,7 @@ const ACTS = {
   more: (d) => { ui.more = d.k; render(); },
   'fin-del': (d) => { S.finance.entries = S.finance.entries.filter((e) => e.id !== d.id); save(); render(); },
   'weather-refresh': () => loadWeather(true),
+  'claude-refresh': () => loadClaude(),
   'city-pick': (d) => { const c = ui.cityResults?.[Number(d.i)]; if (!c) return; Object.assign(S.settings, { city: c.name, lat: c.latitude, lon: c.longitude }); ui.cityResults = null; S.weather = null; save(); render(); loadWeather(true); toast('Город: ' + c.name); },
   'export-copy': copyBackup,
   'projects-refresh': () => fetchProjects(true),
@@ -353,6 +372,7 @@ const FORMS = {
   'add-habit': (f, el) => { S.habits.list.push({ id: 'h' + uid(), name: fd(el).name.trim() }); },
   'add-fin': (f, el) => { const v = fd(el); S.finance.entries.push({ id: uid(), date: v.date, amount: Number(v.amount), category: v.category, note: v.note.trim() }); toast('Трата добавлена'); },
   'save-budget': (f, el) => { S.finance.budget = Number(fd(el).budget) || 0; toast('Бюджет сохранён'); },
+  'save-claude': (f, el) => { S.settings.claudeGist = fd(el).gist.trim().replace(/^.*gist\.github\.com\/[^/]+\//, '').replace(/[^a-zA-Z0-9]/g, ''); S.claude = null; toast('Сохранено'); loadClaude(); },
   'save-stats': (f, el) => { const v = fd(el); S.settings.twitch = v.twitch.trim(); S.settings.youtube = v.youtube.trim(); toast('Сохранено'); },
   'city-search': (f, el) => { searchCity(fd(el).q.trim()); return 'skip'; },
 };
@@ -403,9 +423,11 @@ async function boot() {
   window.__pultBooted = true;
   persist();
   setInterval(tick, 15000);
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { tick(); loadWeather(false); } });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { tick(); loadWeather(false); loadClaude(); } });
+  setInterval(() => { if (document.visibilityState === 'visible') loadClaude(); }, 120000);
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
   fetchProjects(false);
   loadWeather(false);
+  loadClaude();
 }
 boot().catch((e) => { console.error(e); window.__pultFail?.(); });

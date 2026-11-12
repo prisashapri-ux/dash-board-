@@ -159,3 +159,17 @@ test('wttr.in: разбор ответа и перевод кодов', () => {
   assert.equal(L.parseWttr({}), null);
   assert.equal(L.wwoToWmo(999), -1);
 });
+
+test('лимиты Claude: разбор гиста, время сброса, «обновлено»', () => {
+  const content = JSON.stringify({ five_hour: { used_percentage: 10.4, resets_at: 1794516600 }, seven_day: { used_percentage: 16, resets_at: 1794740400 }, updated_at: 1794496000 });
+  const u = L.parseClaudeUsage({ files: { 'claude-usage.json': { content } } });
+  assert.equal(u.session.pct, 10); assert.equal(u.week.pct, 16);
+  assert.equal(u.session.resetsAt, 1794516600000); assert.equal(u.updatedAt, 1794496000000);
+  assert.equal(L.parseClaudeUsage({ files: {} }), null);
+  assert.equal(L.parseClaudeUsage({ files: { 'claude-usage.json': { content: 'не json' } } }), null);
+  const now = new Date(2026, 10, 12, 18, 0), later = new Date(2026, 10, 12, 22, 50), thu = new Date(2026, 10, 19, 10, 0);
+  assert.equal(L.formatReset(later.getTime(), now), 'в 22:50');
+  assert.equal(L.formatReset(thu.getTime(), now), 'Чт 10:00');
+  assert.equal(L.formatAgo(now.getTime() - 5 * 60000, now.getTime()), '5 мин назад');
+  assert.equal(L.formatAgo(now.getTime(), now.getTime()), 'только что');
+});

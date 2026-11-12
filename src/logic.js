@@ -6,7 +6,7 @@ export const DEFAULT_HABITS = ['Зал', 'Прогулка с собаками',
 export const DEFAULT_SETTINGS = {
   city: 'Сочи', lat: 43.585, lon: 39.72,
   morningFrom: 5, dayFrom: 12, eveningFrom: 18,
-  night: 'auto', mode: 'auto', twitch: '', youtube: '',
+  night: 'auto', mode: 'auto', twitch: '', youtube: '', claudeGist: '',
 };
 
 const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
@@ -167,3 +167,35 @@ export function parseWttr(j) {
   return { temp: Number(c.temp_C), code: wwoToWmo(c.weatherCode), today: row(w[0]), tomorrow: w.length > 1 ? row(w[1]) : null };
 }
 export function formatMoney(n) { return Math.round(Number(n) || 0).toLocaleString('ru-RU').replace(/ /g, ' ') + ' ₽'; }
+
+/* ---------- Лимиты Claude (из гиста, который обновляет строка состояния Claude Code на ПК) ---------- */
+export const CLAUDE_USAGE_FILE = 'claude-usage.json';
+const toMs = (t) => { const n = Number(t); if (!n) return null; return n < 1e12 ? n * 1000 : n; };
+/** Ответ GitHub API /gists/:id → { session, week, updatedAt } или null. */
+export function parseClaudeUsage(gist) {
+  const f = gist && gist.files && gist.files[CLAUDE_USAGE_FILE];
+  if (!f || !f.content) return null;
+  let j; try { j = JSON.parse(f.content); } catch (e) { return null; }
+  const win = (w) => (w && w.used_percentage != null ? { pct: Math.max(0, Math.min(100, Math.round(Number(w.used_percentage)))), resetsAt: toMs(w.resets_at) } : null);
+  const session = win(j.five_hour), week = win(j.seven_day);
+  if (!session && !week) return null;
+  return { session, week, updatedAt: toMs(j.updated_at) };
+}
+const WD = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+const hhmm = (d) => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+/** Время сброса: «в 22:50» сегодня, иначе «Чт 10:00». */
+export function formatReset(ms, now) {
+  if (!ms) return '';
+  const d = new Date(ms), n = now || new Date();
+  const same = d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
+  return same ? 'в ' + hhmm(d) : WD[d.getDay()] + ' ' + hhmm(d);
+}
+/** «только что», «5 мин назад», «2 ч назад», «3 дн. назад». */
+export function formatAgo(ms, now) {
+  if (!ms) return '';
+  const m = Math.max(0, Math.round(((now || Date.now()) - ms) / 60000));
+  if (m < 1) return 'только что';
+  if (m < 60) return m + ' мин назад';
+  if (m < 48 * 60) return Math.round(m / 60) + ' ч назад';
+  return Math.round(m / 1440) + ' дн. назад';
+}
