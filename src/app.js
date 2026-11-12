@@ -295,7 +295,7 @@ ${ui.cityResults ? (ui.cityResults.length ? ui.cityResults.map((c, i) => `<div c
 <section class="card"><h2>Лимиты Claude</h2><p class="muted">ID гиста, куда строка состояния Claude Code на ПК пишет лимиты. Как настроить — в README репозитория, раздел «Лимиты Claude».</p>
 <form data-form="save-claude" class="addrow"><input class="wide" name="gist" value="${esc(s.claudeGist)}" placeholder="например, 3f2a…c91" autocomplete="off"><button class="btn primary">Сохранить</button></form></section>
 <section class="card"><h2>Проекты</h2><p class="muted">projects.json обновлён: <b>${esc(S.remote.updated || 'ещё не загружен')}</b></p><button class="btn" data-act="projects-refresh">Обновить проекты</button></section>
-<section class="card"><p class="muted tiny">Пульт · версия ${esc(VERSION)}</p></section>`;
+<section class="card"><h2>Обновления</h2><p class="muted">Пульт обновляется сам: новая версия скачивается в фоне, и страница перезагружается, когда ты ничего не вводишь. Кнопка ниже — если хочется прямо сейчас.</p><button class="btn" data-act="app-update">Обновить Пульт</button><p class="muted tiny" style="margin-top:8px">Версия ${esc(VERSION)}</p></section>`;
 }
 function moreView() {
   const subs = [['habits', 'Привычки'], ['routines', 'Рутины'], ['goals', 'Цели'], ['shopping', 'Покупки'], ['finance', 'Финансы'], ['stats', 'Статистика'], ['settings', 'Настройки']];
@@ -530,6 +530,7 @@ const ACTS = {
   'shop-clear': () => { S.shopping = S.shopping.filter((x) => !x.done); save(); render(); },
   'photos-clear': async () => { if (!confirm('Удалить все фото из «рамки»?')) return; ui.photos = []; await savePhotos([]); render(); },
   'ambient-show': () => showAmbient(),
+  'app-update': () => appUpdate(),
   'projects-refresh': () => fetchProjects(true),
 };
 const FORMS = {
@@ -597,18 +598,53 @@ document.addEventListener('change', (e) => {
   }
 });
 
+/* ---------- Автообновление ---------- */
+// Новая версия сайта ставится сервис-воркером в фоне. Как только она взяла управление, Пульт перезагружается сам,
+// но не посреди ввода: если открыто окно или в поле есть текст, ждём, пока освободится.
+let pendingReload = false;
+const busyNow = () => !!ui.modal || !!document.activeElement?.matches?.('input, textarea, select') ||
+  [...document.querySelectorAll('#view form input[name], #view form textarea[name]')].some((e) => e.value && e.type !== 'date' && e.type !== 'time' && !e.defaultValue);
+function tryReload() {
+  if (!pendingReload || busyNow()) return;
+  pendingReload = false;
+  try { if (ui.ambient) sessionStorage.setItem('pult-ambient', '1'); } catch { /* без хранилища */ }
+  flush().then(() => location.reload());
+}
+function setupUpdates() {
+  if (!('serviceWorker' in navigator) || !(location.protocol === 'https:' || location.hostname === 'localhost')) return;
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) { pendingReload = true; tryReload(); } });
+  setInterval(tryReload, 15000);
+  navigator.serviceWorker.register('sw.js').then((reg) => {
+    const check = () => { if (navigator.onLine !== false) reg.update().catch(() => {}); };
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+    // Пульт открыт круглые сутки и почти не сворачивается, поэтому проверяем новую версию и по таймеру.
+    setInterval(() => { if (document.visibilityState === 'visible') check(); }, 10 * 60000);
+  }).catch(() => {});
+}
+/** Ручное обновление: сохраняем данные, сбрасываем кэш сайта и перезапускаемся с новой версией из сети. */
+async function appUpdate() {
+  if (navigator.onLine === false) { toast('Нет интернета, обновить не получится'); return; }
+  toast('Обновляю…');
+  await flush();
+  try { await (await navigator.serviceWorker?.getRegistration())?.update(); } catch { /* без сервис-воркера */ }
+  try { for (const k of await caches.keys()) await caches.delete(k); } catch { /* кэша нет */ }
+  setTimeout(() => location.reload(), 400);
+}
+
 /* ---------- Запуск ---------- */
 async function boot() {
   S = normalize(await loadState());
   render();
-  loadPhotos().then((p) => { ui.photos = p; if (ui.tab === 'more' && ui.more === 'settings') render(); });
+  let backToAmbient = false; try { backToAmbient = sessionStorage.getItem('pult-ambient') === '1'; sessionStorage.removeItem('pult-ambient'); } catch { /* без хранилища */ }
+  loadPhotos().then((p) => { ui.photos = p; if (backToAmbient) showAmbient(); else if (ui.tab === 'more' && ui.more === 'settings') render(); });
   window.__pultBooted = true;
   persist();
   setInterval(tick, 15000);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { ui.lastTouch = Date.now(); tick(); loadWeather(false); loadClaude(); loadRates(false); } });
   setInterval(() => { if (document.visibilityState === 'visible') loadWeather(false); }, 15 * 60000);
   setInterval(() => { if (document.visibilityState === 'visible') loadClaude(); }, 120000);
-  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
+  setupUpdates();
   fetchProjects(false);
   loadWeather(false);
   loadClaude();
