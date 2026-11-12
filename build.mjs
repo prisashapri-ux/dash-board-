@@ -27,7 +27,7 @@ let html = fs.readFileSync(path.join(src, 'index.html'), 'utf8').replaceAll('__V
 // Политика безопасности: скрипты только свои (встроенные разрешены по хешу), сеть только к своему сайту и Open-Meteo.
 const inline = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map((m) => `'sha256-${crypto.createHash('sha256').update(m[1]).digest('base64')}'`);
 const csp = ["default-src 'self'", `script-src 'self' ${inline.join(' ')}`, "style-src 'self' 'unsafe-inline'", "img-src 'self' data: blob:",
-  "connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com", "worker-src 'self'", "object-src 'none'", "base-uri 'self'", "form-action 'none'"].join('; ');
+  "connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://wttr.in", "worker-src 'self'", "object-src 'none'", "base-uri 'self'", "form-action 'none'"].join('; ');
 html = html.replace('<meta charset="utf-8">', `<meta charset="utf-8">\n<meta http-equiv="Content-Security-Policy" content="${csp}">`);
 fs.writeFileSync(path.join(dist, 'index.html'), html);
 const list = ['./', './index.html', ...files.map((f) => './' + f)];

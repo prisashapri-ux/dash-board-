@@ -67,7 +67,7 @@ const money = L.formatMoney;
 function weatherCard() {
   const w = S.weather, d = w?.data;
   const refresh = '<button class="btn small ghost" data-act="weather-refresh">Обновить</button>';
-  if (!d) return `<section class="card"><h3>Погода</h3><p class="muted">${esc(S.settings.city)}: данных пока нет. ${ui.wxState === 'loading' ? 'Загружаю…' : 'Нет сети или сервис не ответил.'}</p>${refresh}</section>`;
+  if (!d) return `<section class="card"><h3>Погода</h3><p class="muted">${esc(S.settings.city)}: данных пока нет. ${ui.wxState === 'loading' ? 'Загружаю…' : 'Нет сети или сервис не ответил.'}</p>${ui.wxError ? `<p class="muted tiny">${esc(ui.wxError)}</p>` : ''}${refresh}</section>`;
   const info = L.wmoInfo(d.code), tm = d.tomorrow ? L.wmoInfo(d.tomorrow.code) : null;
   const at = new Date(w.at);
   return `<section class="card"><div class="row space"><h3>Погода · ${esc(S.settings.city)}</h3>${refresh}</div>
@@ -291,10 +291,12 @@ async function loadWeather(force) {
   if (!force && w && w.lat === lat && w.lon === lon && Date.now() - w.at < 30 * 60000) return;
   ui.wxState = 'loading'; if (ui.tab === 'home') render();
   try {
-    const data = L.parseWeather(await getJson(L.weatherUrl(lat, lon)));
-    if (!data) throw new Error('формат');
-    S.weather = { lat, lon, at: Date.now(), data }; ui.wxState = 'ok'; save();
-  } catch { ui.wxState = 'fail'; }
+    let data = null, errs = [];
+    try { data = L.parseWeather(await getJson(L.weatherUrl(lat, lon))); if (!data) errs.push('Open-Meteo: формат'); } catch (e) { errs.push('Open-Meteo: ' + (e && e.name === 'AbortError' ? 'таймаут' : (e && e.message) || 'ошибка')); }
+    if (!data) { try { data = L.parseWttr(await getJson(L.wttrUrl(lat, lon))); if (!data) errs.push('wttr.in: формат'); } catch (e) { errs.push('wttr.in: ' + (e && e.name === 'AbortError' ? 'таймаут' : (e && e.message) || 'ошибка')); } }
+    if (!data) throw new Error(errs.join('; '));
+    S.weather = { lat, lon, at: Date.now(), data }; ui.wxState = 'ok'; ui.wxError = ''; save();
+  } catch (e) { ui.wxState = 'fail'; ui.wxError = (e && e.message) || ''; }
   if (ui.tab === 'home') render();
 }
 async function searchCity(q) {

@@ -150,3 +150,12 @@ test('projects.json: 10 проектов, корректные этапы и у�
   }
   assert.equal(j.projects.find((p) => p.id === 'video2d').subtitle, 'Жизнь на каждом уровне');
 });
+
+test('wttr.in: разбор ответа и перевод кодов', () => {
+  const w = L.parseWttr({ current_condition: [{ temp_C: '11', weatherCode: '116' }], weather: [
+    { date: '2026-11-12', mintempC: '7', maxtempC: '14', hourly: [{}, {}, {}, {}, { weatherCode: '296' }] },
+    { date: '2026-11-13', mintempC: '6', maxtempC: '12', hourly: [{ weatherCode: '113' }] }] });
+  assert.equal(w.temp, 11); assert.equal(w.code, 2); assert.equal(w.today.code, 61); assert.equal(w.tomorrow.code, 0); assert.equal(w.tomorrow.max, 12);
+  assert.equal(L.parseWttr({}), null);
+  assert.equal(L.wwoToWmo(999), -1);
+});

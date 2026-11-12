@@ -154,4 +154,16 @@ export function parseWeather(j) {
 export function weatherUrl(lat, lon) {
   return `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=2`;
 }
+/** Запасной источник — wttr.in: его коды погоды (WWO) → коды WMO. */
+const WWO = [[[113], 0], [[116], 2], [[119, 122], 3], [[143, 248, 260], 45], [[176, 263, 266, 293, 296, 353], 61],
+  [[299, 302, 305, 308, 356, 359], 63], [[200, 386, 389, 392, 395], 95], [[179, 227, 230, 323, 326, 329, 332, 335, 338, 368, 371], 73],
+  [[182, 185, 281, 284, 311, 314, 317, 320, 350, 362, 365, 374, 377], 66]];
+export function wwoToWmo(code) { const hit = WWO.find((x) => x[0].includes(Number(code))); return hit ? hit[1] : -1; }
+export function wttrUrl(lat, lon) { return `https://wttr.in/${lat},${lon}?format=j1`; }
+export function parseWttr(j) {
+  const c = j?.current_condition?.[0], w = j?.weather;
+  if (!c || !w || !w.length) return null;
+  const row = (x) => ({ date: x.date, min: Number(x.mintempC), max: Number(x.maxtempC), code: wwoToWmo((x.hourly?.[4] || x.hourly?.[0] || {}).weatherCode) });
+  return { temp: Number(c.temp_C), code: wwoToWmo(c.weatherCode), today: row(w[0]), tomorrow: w.length > 1 ? row(w[1]) : null };
+}
 export function formatMoney(n) { return Math.round(Number(n) || 0).toLocaleString('ru-RU').replace(/ /g, ' ') + ' ₽'; }
