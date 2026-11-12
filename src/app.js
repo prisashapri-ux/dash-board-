@@ -228,27 +228,44 @@ function notesView() {
 }
 /* Диктовка: распознавание речи Safari (работает через Siri). Если его нет или оно не разрешено — подсказываем микрофон клавиатуры. */
 function micBtn(on) { const b = $('#micbtn'); if (b) { b.textContent = on ? '■ Стоп' : '🎤 Диктовать'; b.classList.toggle('rec', on); } }
+// В Safari 15 на iPad распознавание иногда подвисает и не присылает ни результата, ни конца.
+// Поэтому: короткая фраза без промежуточных результатов, сторож по времени, и если раз зависло —
+// неделю кнопка сразу ведёт на микрофон клавиатуры.
+const MIC_BROKEN = 'pult-mic-broken';
+const micBroken = () => { try { return Date.now() - Number(localStorage.getItem(MIC_BROKEN) || 0) < 7 * 864e5; } catch { return false; } };
+const markMicBroken = () => { try { localStorage.setItem(MIC_BROKEN, String(Date.now())); } catch { /* без хранилища */ } };
 function dictate() {
-  if (ui.rec) { ui.rec.stop(); return; }
   const ta = document.querySelector('form[data-form="add-note"] textarea');
+  const keyboard = (msg) => { if (ta) ta.focus(); toast(msg || 'Нажми 🎤 на клавиатуре, чтобы надиктовать'); };
+  if (ui.rec) { ui.rec.finishSoon(); return; }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const fallback = (msg) => { if (ta) ta.focus(); toast(msg); };
-  if (!SR || !ta) { fallback('Нажми 🎤 на клавиатуре, чтобы надиктовать'); return; }
+  if (!SR || !ta || micBroken()) { keyboard(); return; }
   let rec;
-  try { rec = new SR(); } catch { fallback('Нажми 🎤 на клавиатуре, чтобы надиктовать'); return; }
-  rec.lang = 'ru-RU'; rec.interimResults = true; rec.continuous = true;
+  try { rec = new SR(); } catch { keyboard(); return; }
+  rec.lang = 'ru-RU'; rec.interimResults = false; rec.continuous = false; rec.maxAlternatives = 1;
   const base = ta.value ? ta.value.replace(/\s*$/, ' ') : '';
-  let heard = false;
-  rec.onresult = (e) => { let t = ''; for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; heard = true; ta.value = base + t; };
+  let heard = false, done = false, guard = 0, soon = 0;
+  const finish = (broken, msg) => {
+    if (done) return; done = true;
+    clearTimeout(guard); clearTimeout(soon);
+    ui.rec = null; micBtn(false);
+    try { rec.onresult = rec.onerror = rec.onend = null; rec.abort(); } catch { /* уже остановлено */ }
+    if (broken) { markMicBroken(); keyboard('Встроенная диктовка не ответила. Нажми 🎤 на клавиатуре — так надёжнее.'); return; }
+    if (msg) toast(msg);
+    else if (heard) { ta.focus(); toast('Готово — проверь текст и сохрани'); }
+  };
+  rec.finishSoon = () => { try { rec.stop(); } catch { /* ignore */ } soon = setTimeout(() => finish(!heard), 1500); };
+  rec.onresult = (e) => { let t = ''; for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; if (t) { heard = true; ta.value = base + t; } };
   rec.onerror = (e) => {
     const why = e && e.error;
-    if (why === 'not-allowed' || why === 'service-not-allowed') fallback('Диктовка не разрешена. Включи: Настройки → Основные → Клавиатура → Диктовка, и разреши микрофон для Safari. Или нажми 🎤 на клавиатуре.');
-    else if (why === 'no-speech') toast('Ничего не услышал, попробуй ещё раз');
-    else if (why !== 'aborted') fallback('Не получилось распознать речь. Нажми 🎤 на клавиатуре.');
+    if (why === 'not-allowed' || why === 'service-not-allowed') { finish(false); keyboard('Диктовка не разрешена: Настройки → Основные → Клавиатура → Диктовка. Или нажми 🎤 на клавиатуре.'); }
+    else if (why === 'no-speech') finish(false, 'Ничего не услышал, попробуй ещё раз');
+    else if (why !== 'aborted') finish(true);
   };
-  rec.onend = () => { ui.rec = null; micBtn(false); if (heard) { ta.focus(); toast('Готово — проверь текст и сохрани'); } };
-  try { rec.start(); } catch { fallback('Нажми 🎤 на клавиатуре, чтобы надиктовать'); return; }
-  ui.rec = rec; micBtn(true); toast('Говори — я записываю');
+  rec.onend = () => finish(false);
+  guard = setTimeout(() => finish(!heard), 20000);
+  try { rec.start(); } catch { finish(true); return; }
+  ui.rec = rec; micBtn(true); toast('Говори — запишу одну фразу');
 }
 const stamp = () => { const d = new Date(); return `${L.isoDate(d)}T${L.formatTime(d)}`; };
 
@@ -580,7 +597,7 @@ const FORMS = {
   'add-task': (f, el) => { const v = fd(el); S.tasks.push({ id: uid(), title: v.title.trim(), date: v.date, time: v.time || '', projectId: v.projectId || '', done: false }); ui.addDate = null; },
   'save-task': (f, el) => { const t = byId(S.tasks, el.dataset.id), v = fd(el); if (t) Object.assign(t, { title: v.title.trim(), date: v.date, time: v.time || '', projectId: v.projectId || '' }); ui.modal = null; },
   'quick-note': (f, el) => { S.notes.push({ id: uid(), text: fd(el).text.trim(), createdAt: stamp(), pinned: false }); toast('Заметка сохранена'); },
-  'add-note': (f, el) => { if (ui.rec) ui.rec.abort(); S.notes.push({ id: uid(), text: fd(el).text.trim(), createdAt: stamp(), pinned: false }); },
+  'add-note': (f, el) => { if (ui.rec) ui.rec.finishSoon(); S.notes.push({ id: uid(), text: fd(el).text.trim(), createdAt: stamp(), pinned: false }); },
   'add-ptask': (f, el) => { const v = fd(el); editProject(ui.modal.id, (p) => p.tasks.push({ id: 'l' + uid(), title: v.title.trim(), done: false, due: null })); },
   'add-habit': (f, el) => { S.habits.list.push({ id: 'h' + uid(), name: fd(el).name.trim() }); },
   'add-fin': (f, el) => { const v = fd(el); S.finance.entries.push({ id: uid(), date: v.date, amount: Number(v.amount), category: v.category, note: v.note.trim() }); toast('Трата добавлена'); },
@@ -607,7 +624,7 @@ document.addEventListener('click', (e) => {
   if (ui.ambient) { hideAmbient(); return; }
   if (e.target.id === 'modal') { ui.modal = null; render(); return; }
   const tab = e.target.closest('[data-tab]');
-  if (tab) { if (ui.rec && tab.dataset.tab !== 'notes') ui.rec.abort(); ui.tab = tab.dataset.tab; ui.modal = null; render(); window.scrollTo(0, 0); return; }
+  if (tab) { if (ui.rec && tab.dataset.tab !== 'notes') ui.rec.finishSoon(); ui.tab = tab.dataset.tab; ui.modal = null; render(); window.scrollTo(0, 0); return; }
   const a = e.target.closest('[data-act]');
   if (a && ACTS[a.dataset.act]) ACTS[a.dataset.act](a.dataset);
 });
