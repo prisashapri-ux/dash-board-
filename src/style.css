@@ -201,3 +201,5 @@ input[type=range] { height: 44px; }
 input[type=range]::-webkit-slider-runnable-track { height: 8px; border-radius: 4px; background: var(--line); }
 input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; margin-top: -10px; border-radius: 50%; background: var(--accent); }
 @media (max-width: 700px) { .seg.stages button { font-size: 13px; } .psheet { border-radius: 0; } .datebtn.small span { font-size: 13px; } }
+.btn.mic { font-weight: 600; }
+.btn.mic.rec { background: var(--bad); border-color: var(--bad); color: var(--on-accent); }
