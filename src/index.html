@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Пульт</title>
+<meta name="description" content="Информационный экран: проекты, задачи, заметки, привычки и финансы. Данные хранятся только в браузере.">
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Пульт">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="stylesheet" href="style.css?v=__VERSION__">
+</head>
+<body>
+<div class="app" id="app"><main class="view" id="view"><section class="card"><p class="muted">Загружаю…</p></section></main></div>
+<div id="modal" hidden></div>
+<div class="toast" id="toast" hidden></div>
+<nav class="tabbar" id="tabs" aria-label="Разделы"></nav>
+<noscript><p style="padding:16px">Для «Пульта» нужен включённый JavaScript.</p></noscript>
+<script>
+// Запасной экран, если приложение не запустилось (старый Safari, сбой загрузки).
+(function () {
+  var why = '';
+  window.addEventListener('error', function (e) { why = why || (e.message || 'ошибка загрузки'); }, true);
+  window.addEventListener('unhandledrejection', function (e) { why = why || String(e.reason && e.reason.message || e.reason); });
+  window.__pultFail = function () {
+    if (window.__pultBooted) return;
+    window.__pultBooted = true;
+    var m = document.getElementById('view');
+    if (m) m.innerHTML = '<section class="card"><h2>Не получилось запустить «Пульт»</h2><p class="muted">Обнови страницу. Если не помогло, закрой вкладку и открой снова. Причина: ' + String(why || 'неизвестна').replace(/</g, '&lt;') + '</p></section>';
+  };
+  setTimeout(window.__pultFail, 6000);
+})();
+</script>
+<script type="module" src="app.js?v=__VERSION__"></script>
+</body>
+</html>

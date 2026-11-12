@@ -1,0 +1,346 @@
+{
+ "updated": "2026-11-12",
+ "projects": [
+  {
+   "id": "mimi",
+   "name": "Мими Руш — кафе",
+   "emoji": "🧋",
+   "stage": "В работе",
+   "progress": 30,
+   "next": "Лендинг кафе",
+   "deadline": null,
+   "tasks": [
+    {
+     "id": "mimi-1",
+     "title": "Лендинг кафе (цель — привести гостей)",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "mimi-2",
+     "title": "Telegram/VK-бот без предзаказа",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "mimi-3",
+     "title": "Визитка в Яндекс Бизнесе",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "mimi-4",
+     "title": "Акция для бывших гостей Tapiera",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "mimi-5",
+     "title": "Написать историю бренда",
+     "done": false,
+     "due": null
+    }
+   ],
+   "note": "",
+   "updated": "2026-11-12T12:00:00Z"
+  },
+  {
+   "id": "twitch",
+   "name": "Twitch-канал deadsints",
+   "emoji": "🎮",
+   "stage": "В работе",
+   "progress": 40,
+   "next": "Оверлеи сцен",
+   "deadline": null,
+   "tasks": [
+    {
+     "id": "twitch-1",
+     "title": "Оверлеи: геймплей, камера, фильмы, разговор с чатом",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "twitch-2",
+     "title": "Оформление канала",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "twitch-3",
+     "title": "Сайт-визитка со ссылками",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "twitch-4",
+     "title": "Расписание стримов из Google Календаря",
+     "done": false,
+     "due": null
+    }
+   ],
+   "note": "",
+   "updated": "2026-11-12T12:00:00Z"
+  },
+  {
+   "id": "video2d",
+   "name": "2D-ролики «Your Life at Every Rank»",
+   "subtitle": "Жизнь на каждом уровне",
+   "emoji": "🎬",
+   "stage": "План",
+   "progress": 25,
+   "next": "Первый ролик",
+   "deadline": null,
+   "tasks": [
+    {
+     "id": "video2d-1",
+     "title": "Стиль персонажа — стикмен тушью",
+     "done": true,
+     "due": null
+    },
+    {
+     "id": "video2d-2",
+     "title": "Фоны в 3D-мире",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "video2d-3",
+     "title": "Озвучка ElevenLabs (голос Flint)",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "video2d-4",
+     "title": "Первый ролик",
+     "done": false,
+     "due": null
+    }
+   ],
+   "note": "",
+   "updated": "2026-11-12T12:00:00Z"
+  },
+  {
+   "id": "gamevideo",
+   "name": "Игровые видео (Dota 2)",
+   "emoji": "🕹",
+   "stage": "В работе",
+   "progress": 35,
+   "next": "Автопоиск интересных моментов",
+   "deadline": null,
+   "tasks": [
+    {
+     "id": "gamevideo-1",
+     "title": "Разбор стиля SkipSG",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "gamevideo-2",
+     "title": "Автопоиск моментов",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "gamevideo-3",
+     "title": "Шаблон монтажа в FilmCraft",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "gamevideo-4",
+     "title": "Дорожка Яндекс Браузера в OBS",
+     "done": false,
+     "due": null
+    }
+   ],
+   "note": "",
+   "updated": "2026-11-12T12:00:00Z"
+  },
+  {
+   "id": "fitapp",
+   "name": "Приложение «Форма»",
+   "emoji": "💪",
+   "stage": "В работе",
+   "progress": 60,
+   "next": "Сборка на iPhone через xtool",
+   "deadline": null,
+   "tasks": [
+    {
+     "id": "fitapp-1",
+     "title": "Веб-версия на GitHub Pages",
+     "done": true,
+     "due": null
+    },
+    {
+     "id": "fitapp-2",
+     "title": "Сборка через xtool",
+     "done": false,
+     "due": null
+    }
+   ],
+   "note": "",
+   "updated": "2026-11-12T12:00:00Z"
+  },
+  {
+   "id": "shed",
+   "name": "Сарайка",
+   "emoji": "🔨",
+   "stage": "В работе",
+   "progress": 50,
+   "next": "Утепление пеноплэксом",
+   "deadline": null,
+   "tasks": [
+    {
+     "id": "shed-1",
+     "title": "Каркас",
+     "done": true,
+     "due": null
+    },
+    {
+     "id": "shed-2",
+     "title": "Обшивка OSB 9 мм",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "shed-3",
+     "title": "Утепление пеноплэксом 50 мм",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "shed-4",
+     "title": "Вентиляция: КИВ-125 + вытяжка с клапаном",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "shed-5",
+     "title": "Профнастил стены — серый",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "shed-6",
+     "title": "Крыша — шоколад",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "shed-7",
+     "title": "Дверь ПВХ и собачья дверца",
+     "done": false,
+     "due": null
+    }
+   ],
+   "note": "",
+   "updated": "2026-11-12T12:00:00Z"
+  },
+  {
+   "id": "clip",
+   "name": "Клип-поздравление",
+   "emoji": "🎤",
+   "stage": "В работе",
+   "progress": 50,
+   "next": "Снять кринж-клип",
+   "deadline": null,
+   "tasks": [
+    {
+     "id": "clip-1",
+     "title": "Песня в Suno",
+     "done": true,
+     "due": null
+    },
+    {
+     "id": "clip-2",
+     "title": "Снять клип",
+     "done": false,
+     "due": null
+    }
+   ],
+   "note": "",
+   "updated": "2026-11-12T12:00:00Z"
+  },
+  {
+   "id": "tvbox",
+   "name": "ТВ-приставка — чистый экран",
+   "emoji": "📺",
+   "stage": "Идея",
+   "progress": 5,
+   "next": "Очистить через ADB",
+   "deadline": null,
+   "tasks": [
+    {
+     "id": "tvbox-1",
+     "title": "Очистить экран через ADB",
+     "done": false,
+     "due": null
+    }
+   ],
+   "note": "",
+   "updated": "2026-11-12T12:00:00Z"
+  },
+  {
+   "id": "pc",
+   "name": "Домашний ПК — автоматизация",
+   "emoji": "🖥",
+   "stage": "План",
+   "progress": 15,
+   "next": "Автовключение в 8:00",
+   "deadline": null,
+   "tasks": [
+    {
+     "id": "pc-1",
+     "title": "Автовключение в 8:00 + VPN",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "pc-2",
+     "title": "Раздельный туннель AmneziaVPN",
+     "done": false,
+     "due": null
+    }
+   ],
+   "note": "",
+   "updated": "2026-11-12T12:00:00Z"
+  },
+  {
+   "id": "pult",
+   "name": "Пульт на iPad",
+   "emoji": "📟",
+   "stage": "В работе",
+   "progress": 30,
+   "next": "Поставить на iPad",
+   "deadline": null,
+   "tasks": [
+    {
+     "id": "pult-1",
+     "title": "Опросник",
+     "done": true,
+     "due": null
+    },
+    {
+     "id": "pult-2",
+     "title": "2D-версия",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "pult-3",
+     "title": "Notion и календарь",
+     "done": false,
+     "due": null
+    },
+    {
+     "id": "pult-4",
+     "title": "Камеры и 3D-участок",
+     "done": false,
+     "due": null
+    }
+   ],
+   "note": "",
+   "updated": "2026-11-12T12:00:00Z"
+  }
+ ]
+}
