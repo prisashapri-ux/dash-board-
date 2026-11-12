@@ -174,17 +174,26 @@ ${stageBar(p.stage)}<div class="row space tiny muted"><span>${esc(p.stage)}</spa
 <div>Дальше: <b>${esc(p.next || '—')}</b></div>${p.deadline ? `<div class="muted tiny">Дедлайн: ${L.formatShortRu(p.deadline)}</div>` : ''}</button>`;
   }).join('')}</div>`;
 }
+/** Кнопка с датой: настоящий выбор даты лежит прозрачно поверх, так на iPad открывается родное колесо дат. */
+function dateBtn(attr, value, empty, cls = '') {
+  return `<label class="datebtn ${cls} ${value ? 'has' : ''}"><span>📅 ${value ? L.formatShortRu(value) : esc(empty)}</span><input type="date" ${attr} value="${esc(value || '')}"></label>`;
+}
 function projectModal(p) {
-  return `<div class="sheet"><div class="row space"><h2>${esc(p.emoji)} ${esc(p.name)}</h2><button class="btn" data-act="close-modal">Закрыть</button></div>${p.subtitle ? `<p class="muted">${esc(p.subtitle)}</p>` : ''}
-<label class="lbl">Этап</label><select data-pfield="stage">${L.STAGES.map((s) => `<option ${s === p.stage ? 'selected' : ''}>${s}</option>`).join('')}</select>
-<label class="lbl">Прогресс: <span id="pprog">${p.progress}</span>%</label><input type="range" min="0" max="100" step="5" value="${p.progress}" data-pfield="progress">
-<label class="lbl">Следующий шаг</label><input data-pfield="next" value="${esc(p.next)}" autocomplete="off">
-<label class="lbl">Дедлайн</label><input type="date" data-pfield="deadline" value="${esc(p.deadline || '')}">
-<h3 style="margin-top:16px">Задачи (${p.tasks.filter((t) => t.done).length}/${p.tasks.length})</h3>
-${p.tasks.map((t) => `<div class="item ${t.done ? 'done' : ''}"><button class="chk ${t.done ? 'on' : ''}" data-act="toggle-ptask" data-id="${esc(t.id)}" aria-label="Отметить"></button><div class="ttl" style="padding:8px 4px">${esc(t.title)}${t.due ? `<span class="chip">до ${L.formatShortRu(t.due)}</span>` : ''}</div>
-<input type="date" style="width:150px" data-ptask-due="${esc(t.id)}" value="${esc(t.due || '')}" aria-label="Срок"><button class="btn ghost danger" data-act="del-ptask" data-id="${esc(t.id)}" aria-label="Удалить">✕</button></div>`).join('') || '<div class="empty">Задач нет</div>'}
-<form data-form="add-ptask" class="addrow" style="margin-top:10px"><input class="wide" name="title" placeholder="Новая задача проекта" autocomplete="off" required><input type="date" name="due"><button class="btn primary">Добавить</button></form>
-${p.note ? `<p class="muted">${esc(p.note)}</p>` : ''}<p class="muted tiny">Изменено: ${esc(String(p.updated || '').slice(0, 16).replace('T', ' '))}</p></div>`;
+  const done = p.tasks.filter((t) => t.done).length, today = todayISO();
+  const tasks = [...p.tasks].sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0));
+  return `<div class="sheet psheet"><div class="sheet-head"><div class="grow"><h2>${esc(p.emoji)} ${esc(p.name)}</h2>${p.subtitle ? `<div class="muted">${esc(p.subtitle)}</div>` : ''}</div><button class="btn" data-act="close-modal">Готово</button></div>
+<div class="sheet-body">
+<label class="lbl">Этап</label><div class="seg stages">${L.STAGES.map((s) => `<button class="${s === p.stage ? 'on' : ''}" data-act="p-stage" data-v="${esc(s)}">${esc(s)}</button>`).join('')}</div>
+<label class="lbl">Прогресс</label><div class="progrow"><button class="btn big-btn" data-act="p-prog" data-d="-10" aria-label="Меньше на 10">−</button><div class="grow"><div class="progval">${p.progress}%</div><div class="bar big"><span style="width:${p.progress}%"></span></div></div><button class="btn big-btn" data-act="p-prog" data-d="10" aria-label="Больше на 10">+</button></div>
+<div class="chips">${[0, 25, 50, 75, 100].map((v) => `<button class="chipbtn ${p.progress === v ? 'on' : ''}" data-act="p-prog-set" data-v="${v}">${v}%</button>`).join('')}</div>
+<label class="lbl">Следующий шаг</label><input data-pfield="next" value="${esc(p.next)}" autocomplete="off" placeholder="Что сделать дальше">
+<label class="lbl">Дедлайн</label><div class="row gap">${dateBtn('data-pfield="deadline"', p.deadline, 'Без дедлайна')}${p.deadline ? `<button class="btn ghost" data-act="p-deadline-clear">Убрать</button><span class="muted">${(() => { const n = L.daysUntil(today, p.deadline); return n < 0 ? 'просрочен' : L.formatDaysLeft(n); })()}</span>` : ''}</div>
+<div class="row space" style="margin-top:18px"><h2 style="margin:0">Задачи</h2><span class="chip">${done} из ${p.tasks.length}</span></div>
+<div class="bar"><span style="width:${p.tasks.length ? Math.round((done / p.tasks.length) * 100) : 0}%"></span></div>
+${tasks.map((t) => { const late = !t.done && t.due && t.due < today; return `<div class="item ptask ${t.done ? 'done' : ''}"><button class="chk ${t.done ? 'on' : ''}" data-act="toggle-ptask" data-id="${esc(t.id)}" aria-label="Отметить"></button><button class="ttl" data-act="toggle-ptask" data-id="${esc(t.id)}">${esc(t.title)}</button>
+${dateBtn(`data-ptask-due="${esc(t.id)}"`, t.due, 'срок', 'small' + (late ? ' late' : ''))}<button class="btn ghost danger xbtn" data-act="del-ptask" data-id="${esc(t.id)}" aria-label="Удалить">✕</button></div>`; }).join('') || '<div class="empty">Задач нет</div>'}
+<form data-form="add-ptask" class="addrow" style="margin-top:10px"><input class="wide" name="title" placeholder="Новая задача проекта" autocomplete="off" required><button class="btn primary">Добавить</button></form>
+${p.note ? `<p class="muted">${esc(p.note)}</p>` : ''}<p class="muted tiny">Изменено: ${esc(String(p.updated || '').slice(0, 16).replace('T', ' '))}</p></div></div>`;
 }
 
 /* ---------- Задачи ---------- */
@@ -344,7 +353,8 @@ function renderModal() {
   let html = '';
   if (md?.type === 'project') { const p = projectById(md.id); if (p) html = projectModal(p); }
   if (md?.type === 'task') { const t = S.tasks.find((x) => x.id === md.id); if (t) html = taskModal(t); }
-  m.innerHTML = html; m.hidden = !html;
+  const keepScroll = m.hidden ? 0 : m.scrollTop;
+  m.innerHTML = html; m.hidden = !html; m.scrollTop = keepScroll;
   document.body.style.overflow = html ? 'hidden' : '';
 }
 function applyTheme() {
@@ -495,7 +505,11 @@ const ACTS = {
   'close-modal': () => { ui.modal = null; render(); },
   'open-project': (d) => { ui.modal = { type: 'project', id: d.id }; renderModal(); },
   'toggle-ptask': (d) => { editProject(ui.modal.id, (p) => { const t = byId(p.tasks, d.id); if (t) t.done = !t.done; }); renderModal(); render(); },
-  'del-ptask': (d) => { editProject(ui.modal.id, (p) => { p.tasks = p.tasks.filter((t) => t.id !== d.id); }); render(); },
+  'del-ptask': (d) => { const t = byId(projectById(ui.modal.id)?.tasks || [], d.id); if (t && !confirm(`Удалить задачу «${t.title}»?`)) return; editProject(ui.modal.id, (p) => { p.tasks = p.tasks.filter((x) => x.id !== d.id); }); render(); },
+  'p-stage': (d) => { editProject(ui.modal.id, (p) => { p.stage = d.v; if (d.v === 'Готово') p.progress = 100; }); render(); },
+  'p-prog': (d) => { editProject(ui.modal.id, (p) => { p.progress = Math.max(0, Math.min(100, Math.round((p.progress + Number(d.d)) / 5) * 5)); }); render(); },
+  'p-prog-set': (d) => { editProject(ui.modal.id, (p) => { p.progress = Number(d.v); }); render(); },
+  'p-deadline-clear': () => { editProject(ui.modal.id, (p) => { p.deadline = null; }); render(); },
   'strip-day': (d) => { ui.addDate = d.date; render(); },
   'note-pin': (d) => { const n = byId(S.notes, d.id); if (n) { n.pinned = !n.pinned; save(); $('#notelist').innerHTML = noteCards(); } },
   'note-del': (d) => { if (confirm('Удалить заметку?')) { S.notes = S.notes.filter((n) => n.id !== d.id); save(); $('#notelist').innerHTML = noteCards(); } },
@@ -542,7 +556,7 @@ const FORMS = {
   'save-task': (f, el) => { const t = byId(S.tasks, el.dataset.id), v = fd(el); if (t) Object.assign(t, { title: v.title.trim(), date: v.date, time: v.time || '', projectId: v.projectId || '' }); ui.modal = null; },
   'quick-note': (f, el) => { S.notes.push({ id: uid(), text: fd(el).text.trim(), createdAt: stamp(), pinned: false }); toast('Заметка сохранена'); },
   'add-note': (f, el) => { S.notes.push({ id: uid(), text: fd(el).text.trim(), createdAt: stamp(), pinned: false }); },
-  'add-ptask': (f, el) => { const v = fd(el); editProject(ui.modal.id, (p) => p.tasks.push({ id: 'l' + uid(), title: v.title.trim(), done: false, due: v.due || null })); },
+  'add-ptask': (f, el) => { const v = fd(el); editProject(ui.modal.id, (p) => p.tasks.push({ id: 'l' + uid(), title: v.title.trim(), done: false, due: null })); },
   'add-habit': (f, el) => { S.habits.list.push({ id: 'h' + uid(), name: fd(el).name.trim() }); },
   'add-fin': (f, el) => { const v = fd(el); S.finance.entries.push({ id: uid(), date: v.date, amount: Number(v.amount), category: v.category, note: v.note.trim() }); toast('Трата добавлена'); },
   'save-budget': (f, el) => { S.finance.budget = Number(fd(el).budget) || 0; toast('Бюджет сохранён'); },

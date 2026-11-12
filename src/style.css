@@ -172,3 +172,32 @@ body.night .amb-box { color: #8a3c32; }
 
 /* Ночное затемнение: не мешает нажатиям */
 #dim { position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 90; background: #000; pointer-events: none; }
+
+/* Окно проекта: крупное управление под палец */
+#modal { background: rgba(0,0,0,.8); }
+.psheet { max-width: 760px; padding: 0; overflow: hidden; }
+.sheet-head { display: -webkit-box; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; padding: 14px 16px; background: var(--card2); border-bottom: 1px solid var(--line); }
+.sheet-head h2 { margin: 0; font-size: 20px; }
+.sheet-head .btn { margin-left: 12px; font-weight: 600; }
+.sheet-body { padding: 4px 16px 16px; }
+.seg.stages { margin-bottom: 4px; }
+.seg.stages button { font-size: 15px; padding: 0 4px; }
+.progrow { display: -webkit-box; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
+.progrow .grow { margin: 0 12px; text-align: center; }
+.progval { font-size: 26px; font-weight: 600; }
+.big-btn { width: 64px; height: 56px; font-size: 28px; line-height: 1; padding: 0; }
+.chips { display: -webkit-box; display: -webkit-flex; display: flex; margin: 8px -4px 0; }
+.chipbtn { -webkit-box-flex: 1; -webkit-flex: 1; flex: 1; margin: 0 4px; min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--card2); color: var(--muted); font-size: 15px; }
+.chipbtn.on { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.datebtn { position: relative; display: inline-block; min-height: 44px; line-height: 42px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--card2); color: var(--muted); white-space: nowrap; overflow: hidden; }
+.datebtn.has { color: var(--text); }
+.datebtn.small { font-size: 14px; padding: 0 10px; -webkit-flex: 0 0 auto; flex: 0 0 auto; margin-left: 6px; }
+.datebtn.late { color: var(--bad); border-color: var(--bad); }
+.datebtn input { position: absolute; left: 0; top: 0; width: 100%; height: 100%; min-height: 0; opacity: 0; padding: 0; border: 0; margin: 0; }
+.ptask .ttl { min-height: 52px; }
+.xbtn { -webkit-flex: 0 0 44px; flex: 0 0 44px; padding: 0; margin-left: 4px; color: var(--muted); }
+/* Ползунок, если где-то остался: видимая дорожка в Safari */
+input[type=range] { height: 44px; }
+input[type=range]::-webkit-slider-runnable-track { height: 8px; border-radius: 4px; background: var(--line); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; margin-top: -10px; border-radius: 50%; background: var(--accent); }
+@media (max-width: 700px) { .seg.stages button { font-size: 13px; } .psheet { border-radius: 0; } .datebtn.small span { font-size: 13px; } }
