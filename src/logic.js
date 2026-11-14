@@ -348,7 +348,6 @@ export const NEWS_FEEDS = [
   { topic: 'github', source: 'GitHub Blog', url: 'https://github.blog/ai-and-ml/feed/' },
   { topic: 'aianim', source: 'Curious Refuge', yt: '@curiousrefuge' },
   { topic: 'aianim', source: 'Theoretically Media', yt: '@TheoreticallyMedia' },
-  { topic: 'aianim', source: 'MattVidPro AI', yt: '@MattVidProAI' },
   { topic: 'aianim', source: 'Google Новости', url: gnews('ИИ анимация OR нейросеть мультфильм when:7d'), google: true },
   { topic: 'aianim', source: 'Google News', url: gnewsEn('"AI animation" OR "AI video generator" when:3d'), google: true },
   { topic: 'print3d', source: 'Google Новости', url: gnews('3D-печать нейросеть OR ИИ when:7d'), google: true },
