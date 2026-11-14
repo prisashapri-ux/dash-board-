@@ -1,13 +1,14 @@
-// Запускается в GitHub Actions перед выкладкой: читает Google Таблицу «График Мими Руш» и кладёт на сайт
-// только смены одного человека, без имён коллег (сайт публичный): dist/data/shifts.json.
-// ID таблицы и имя строки берутся из секретов репозитория SCHEDULE_SHEET_ID и SCHEDULE_NAME, в коде их нет.
+// Запускается в GitHub Actions перед выкладкой: читает Google Таблицу «График Мими Руш» (все сотрудники)
+// и кладёт на сайт в зашифрованном виде: dist/data/shifts.json. Сайт публичный, поэтому без пароля имена и часы не прочитать.
+// Секреты репозитория: SCHEDULE_SHEET_ID (ссылка или ID таблицы), SCHEDULE_KEY (пароль, его же вводят на iPad),
+// SCHEDULE_NAME (своё имя в таблице, необязательно — для подсветки своей строки).
 import fs from 'node:fs';
 import path from 'node:path';
-import { sheetIdFromLink, scheduleSheetName, scheduleUrl, parseSchedule, findPerson } from '../src/logic.js';
+import { sheetIdFromLink, scheduleSheetName, scheduleUrl, parseSchedule, encryptJson } from '../src/logic.js';
 
 const root = path.dirname(path.dirname(new URL(import.meta.url).pathname));
 const out = path.join(root, 'dist', 'data');
-const id = sheetIdFromLink(process.env.SCHEDULE_SHEET_ID), name = String(process.env.SCHEDULE_NAME || '').trim();
+const id = sheetIdFromLink(process.env.SCHEDULE_SHEET_ID), name = String(process.env.SCHEDULE_NAME || '').trim(), pass = String(process.env.SCHEDULE_KEY || '');
 
 async function month(y, m) {
   // Лист называется «ноябрь 2026», иногда с пробелом в конце.
@@ -24,8 +25,8 @@ async function month(y, m) {
   return null;
 }
 
-if (!id || !name) {
-  console.log('График: секреты SCHEDULE_SHEET_ID и SCHEDULE_NAME не заданы, пропускаю');
+if (!id || !pass) {
+  console.log('График: секреты SCHEDULE_SHEET_ID и SCHEDULE_KEY не заданы, пропускаю');
 } else {
   try {
     // Дата по Москве (Сочи), а не по UTC раннера.
@@ -34,13 +35,13 @@ if (!id || !name) {
     for (const [yy, mm] of [[y, m], m === 12 ? [y + 1, 1] : [y, m + 1]]) {
       const sch = await month(yy, mm);
       if (!sch) { console.log(`График: листа «${scheduleSheetName(yy, mm)}» нет`); continue; }
-      const p = findPerson(sch, name);
-      if (!p) { console.log(`График: в листе «${scheduleSheetName(yy, mm)}» нет строки с этим именем`); continue; }
-      months.push({ y: yy, m: mm, days: sch.days, shifts: p.days });
+      console.log(`График: лист «${scheduleSheetName(yy, mm)}», сотрудников: ${sch.people.length}`);
+      months.push(sch);
     }
     if (!months.length) throw new Error('нет данных');
     fs.mkdirSync(out, { recursive: true });
-    fs.writeFileSync(path.join(out, 'shifts.json'), JSON.stringify({ fetchedAt: new Date().toISOString(), months }));
+    const fetchedAt = new Date().toISOString();
+    fs.writeFileSync(path.join(out, 'shifts.json'), JSON.stringify({ fetchedAt, enc: await encryptJson({ fetchedAt, me: name, months }, pass) }));
     console.log('shifts.json готов, месяцев:', months.length);
   } catch (e) {
     // Без графика сайт всё равно выкладываем.

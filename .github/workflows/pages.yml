@@ -30,11 +30,12 @@ jobs:
       - run: node scripts/fetch-news.mjs
         env:
           GITHUB_TOKEN: ${{ github.token }}
-      # Смены Мими Руш: только свои, без имён коллег. Ссылка на таблицу и имя лежат в секретах репозитория.
+      # Смены Мими Руш: весь график, зашифрованный паролем. Ссылка, пароль и имя лежат в секретах репозитория.
       - run: node scripts/fetch-shifts.mjs
         env:
           SCHEDULE_SHEET_ID: ${{ secrets.SCHEDULE_SHEET_ID }}
           SCHEDULE_NAME: ${{ secrets.SCHEDULE_NAME }}
+          SCHEDULE_KEY: ${{ secrets.SCHEDULE_KEY }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

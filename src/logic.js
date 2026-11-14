@@ -7,7 +7,7 @@ export const DEFAULT_SETTINGS = {
   city: 'Сочи', lat: 43.585, lon: 39.72,
   morningFrom: 5, dayFrom: 12, eveningFrom: 18,
   night: 'auto', mode: 'auto', twitch: '', youtube: '', claudeGist: '',
-  keepAwake: true, ambientMin: 5, ambientPhotos: true, nightDim: 30,
+  keepAwake: true, ambientMin: 5, ambientPhotos: true, nightDim: 30, scheduleKey: '',
 };
 export const DEFAULT_ROUTINES = {
   morning: ['Стакан воды', 'Зарядка', 'Прогулка с собаками', 'План на день'],
@@ -510,19 +510,47 @@ export function scheduleChanges(prev, next, fromISO) {
   }
   return out;
 }
-// data/shifts.json с сайта → месяцы в том же виде, что parseSchedule, с одним человеком «Я».
-export const SHIFTS_ME = 'Я';
-export function parseSiteShifts(j) {
+// Длина смены в часах («9-22» → 13).
+export function shiftHours(c) {
+  if (!c || !c.from) return 0;
+  const t = (x) => { const [h, m] = x.split(':').map(Number); return h + m / 60; };
+  let h = t(c.to) - t(c.from); if (h <= 0) h += 24;
+  return Math.round(h * 10) / 10;
+}
+export function monthHours(p) { return Math.round(Object.values(p.days).reduce((s, c) => s + shiftHours(c), 0) * 10) / 10; }
+// Шифрование графика на публичном сайте: PBKDF2 → AES-GCM. Работает и в Node 22 (Actions), и в Safari 15.
+const b64 = (u8) => { let s = ''; for (const b of u8) s += String.fromCharCode(b); return btoa(s); };
+const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+async function schKey(pass, salt) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 150000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+export async function encryptJson(obj, pass) {
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const data = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await schKey(pass, salt), new TextEncoder().encode(JSON.stringify(obj))));
+  return { v: 1, salt: b64(salt), iv: b64(iv), data: b64(data) };
+}
+export async function decryptJson(enc, pass) {
+  if (!enc || enc.v !== 1) throw new Error('формат');
+  let buf;
+  try { buf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(enc.iv) }, await schKey(pass, unb64(enc.salt)), unb64(enc.data)); } catch { throw new Error('неверный пароль'); }
+  return JSON.parse(new TextDecoder().decode(buf));
+}
+// Расшифрованный data/shifts.json → { me, months: { '2026-11': { y, m, days, people } } }.
+export function parseSiteSchedule(j) {
   if (!j || !Array.isArray(j.months)) return null;
   const months = {};
   for (const x of j.months) {
-    if (!x || !Number.isInteger(x.y) || !Number.isInteger(x.m) || x.m < 1 || x.m > 12 || !x.shifts || typeof x.shifts !== 'object') continue;
-    const days = {};
-    for (const [d, c] of Object.entries(x.shifts)) {
-      if (!c || typeof c !== 'object') continue;
-      days[Number(d)] = c.off ? { off: true } : c.from ? { from: String(c.from), to: String(c.to), text: String(c.text || '') } : { note: String(c.note || '').slice(0, 20) };
-    }
-    months[`${x.y}-${String(x.m).padStart(2, '0')}`] = { y: x.y, m: x.m, days: monthDays(x.y, x.m), people: [{ name: SHIFTS_ME, days }] };
+    if (!x || !Number.isInteger(x.y) || !Number.isInteger(x.m) || x.m < 1 || x.m > 12 || !Array.isArray(x.people)) continue;
+    const people = x.people.filter((p) => p && typeof p.name === 'string' && p.days && typeof p.days === 'object').map((p) => {
+      const days = {};
+      for (const [d, c] of Object.entries(p.days)) {
+        if (!c || typeof c !== 'object') continue;
+        days[Number(d)] = c.off ? { off: true } : c.from ? { from: String(c.from), to: String(c.to), text: String(c.text || '') } : { note: String(c.note || '').slice(0, 20) };
+      }
+      return { name: p.name.slice(0, 30), days };
+    });
+    if (people.length) months[`${x.y}-${String(x.m).padStart(2, '0')}`] = { y: x.y, m: x.m, days: monthDays(x.y, x.m), people };
   }
-  return Object.keys(months).length ? { fetchedAt: j.fetchedAt || null, months } : null;
+  return Object.keys(months).length ? { me: typeof j.me === 'string' ? j.me : '', months } : null;
 }

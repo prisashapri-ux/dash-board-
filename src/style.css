@@ -231,12 +231,37 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px;
 .warnc { color: var(--warn); }
 .schchg { border: 1px solid var(--warn); border-radius: 12px; padding: 8px 12px; margin: 6px 0 10px; }
 .schchg .tiny { margin-top: 4px; }
+.pdot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+.linkbtn { background: none; border: 0; color: var(--accent); font-size: inherit; padding: 0; min-height: 0; text-decoration: underline; }
+.tl { margin: 4px 0 10px; }
+.tlrow { display: -webkit-box; display: -webkit-flex; display: flex; -webkit-box-align: center; -webkit-align-items: center; align-items: center; min-height: 40px; }
+.tlname { width: 110px; -webkit-flex-shrink: 0; flex-shrink: 0; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; }
+.tlname.me { color: var(--accent); font-weight: 700; }
+.tltrack { position: relative; -webkit-box-flex: 1; -webkit-flex: 1; flex: 1; height: 34px; background: var(--card2); border-radius: 8px; }
+.tlticks { position: relative; -webkit-box-flex: 1; -webkit-flex: 1; flex: 1; height: 20px; }
+.tlticks span { position: absolute; top: 0; -webkit-transform: translateX(-50%); transform: translateX(-50%); font-size: 13px; color: var(--muted); }
+.tlbar { position: absolute; top: 3px; bottom: 3px; border-radius: 6px; color: #0f1115; font-size: 13px; font-weight: 600; line-height: 28px; padding: 0 8px; overflow: hidden; white-space: nowrap; }
+.tlnow { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--bad); z-index: 2; }
 .schwrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -4px; }
-table.sch { border-collapse: collapse; font-size: 13px; line-height: 1.25; }
-table.sch th, table.sch td { border: 1px solid var(--line); padding: 4px 3px; text-align: center; min-width: 38px; white-space: nowrap; }
-table.sch thead th { font-weight: 600; }
-table.sch tbody th { position: -webkit-sticky; position: sticky; left: 0; z-index: 1; background: var(--card); text-align: left; padding: 4px 8px; min-width: 84px; font-weight: 500; }
-table.sch td.on { background: var(--card2); }
-table.sch .we { color: var(--warn); }
-table.sch .today { outline: 2px solid var(--accent); outline-offset: -2px; }
-table.sch tr.me th, table.sch tr.me td { color: var(--accent); font-weight: 700; }
+table.sch { border-collapse: separate; border-spacing: 0; font-size: 13px; line-height: 1.25; }
+table.sch th, table.sch td { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 4px 3px; text-align: center; min-width: 46px; height: 44px; white-space: nowrap; }
+table.sch thead th { font-weight: 600; cursor: pointer; min-height: 44px; }
+table.sch thead th span { font-weight: 400; color: var(--muted); }
+table.sch th.nm { position: -webkit-sticky; position: sticky; left: 0; z-index: 1; background: var(--card); text-align: left; padding: 4px 8px; min-width: 120px; font-weight: 500; cursor: default; }
+table.sch td.off { color: var(--muted); }
+table.sch td.part { font-style: italic; }
+table.sch td.note { color: var(--warn); }
+table.sch .stot { font-weight: 600; min-width: 56px; }
+table.sch .we, table.sch thead th.we span { color: var(--warn); }
+table.sch .today { box-shadow: inset 0 0 0 2px var(--accent); }
+table.sch .sel { background: var(--card2); }
+table.sch thead th.sel { background: var(--accent); color: var(--on-accent); }
+table.sch thead th.sel span { color: var(--on-accent); }
+table.sch tr.me th, table.sch tr.me td { font-weight: 700; }
+table.sch tr.me th.nm { color: var(--accent); }
+table.sch tr.cnt td { color: var(--muted); }
+table.sch tr.cnt td.low { color: var(--bad); font-weight: 700; }
+.legend { display: -webkit-box; display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; margin-top: 10px; font-size: 13px; color: var(--muted); }
+.legend span { margin: 0 14px 6px 0; }
+.lg { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; border: 1px solid var(--line); }
+.lg.full { background: rgba(143, 184, 222, .35); } .lg.part { background: rgba(143, 184, 222, .15); } .lg.off { background: var(--card2); } .lg.none { background: transparent; } .lg.low { background: var(--bad); }

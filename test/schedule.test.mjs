@@ -58,9 +58,18 @@ test('изменения графика: только с сегодняшнег�
   L.findPerson(b, 'Саша').days[2] = { off: true };
   assert.deepEqual(L.scheduleChanges(a, b, '2026-11-14'), [{ date: '2026-11-20', name: 'Саша', was: 'нет в графике', now: 'выходной' }]);
 });
-test('смены с сайта: только свои, в виде месяца', () => {
-  const r = L.parseSiteShifts({ fetchedAt: '2026-11-14T10:00:00Z', months: [{ y: 2026, m: 11, days: 30, shifts: { 17: { from: '09:00', to: '22:00', text: '9-22' }, 3: { off: true } } }, { y: 'x' }] });
-  assert.deepEqual(Object.keys(r.months), ['2026-11']);
-  assert.deepEqual(L.nextShifts(Object.values(r.months), L.SHIFTS_ME, '2026-11-14').map((x) => x.date), ['2026-11-17']);
-  assert.equal(L.parseSiteShifts({}), null);
+test('часы смен', () => {
+  assert.equal(L.shiftHours({ from: '09:00', to: '22:00' }), 13);
+  assert.equal(L.shiftHours({ off: true }), 0);
+  const s = L.parseSchedule(CSV, 2026, 11);
+  assert.equal(L.monthHours(L.findPerson(s, 'Саша')), 13 * 12);
+});
+test('шифрование: расшифровка паролем, чужой пароль не подходит', async () => {
+  const s = L.parseSchedule(CSV, 2026, 11);
+  const enc = await L.encryptJson({ me: 'Саша', months: [s] }, 'секрет');
+  assert.ok(!JSON.stringify(enc).includes('Софи'));
+  const r = L.parseSiteSchedule(await L.decryptJson(enc, 'секрет'));
+  assert.equal(r.me, 'Саша');
+  assert.deepEqual(r.months['2026-11'].people.map((p) => p.name), ['Софи', 'Саша', 'Прияткин']);
+  await assert.rejects(L.decryptJson(enc, 'не тот'), /неверный пароль/);
 });
