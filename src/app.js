@@ -15,12 +15,12 @@ function defaults() {
     finance: { entries: [], budget: 0 },
     settings: { ...L.DEFAULT_SETTINGS },
     projects: [], remote: { updated: null, projects: [] }, weather: null, claude: null,
-    goals: [], countdowns: [], journal: {}, shopping: [], menu: ['', '', '', '', '', '', ''], rates: null, news: null, savedNews: [],
+    goals: [], countdowns: [], journal: {}, shopping: [], menu: ['', '', '', '', '', '', ''], rates: null, news: null, savedNews: [], schedule: null,
     routines: { morning: L.DEFAULT_ROUTINES.morning.map((title, i) => ({ id: 'rm' + (i + 1), title })), evening: L.DEFAULT_ROUTINES.evening.map((title, i) => ({ id: 're' + (i + 1), title })), checks: {} },
   };
 }
 let S = defaults();
-const ui = { newsTopic: 'all', nwState: '', tab: 'home', more: 'habits', noteQuery: '', modal: null, addDate: null, habitEdit: false, routineEdit: false, cityResults: null, wxState: '', lastKey: '', photos: [], ambient: false, lastTouch: Date.now() };
+const ui = { schMonth: '', newsTopic: 'all', nwState: '', tab: 'home', more: 'habits', noteQuery: '', modal: null, addDate: null, habitEdit: false, routineEdit: false, cityResults: null, wxState: '', lastKey: '', photos: [], ambient: false, lastTouch: Date.now() };
 
 function normalize(raw) {
   const d = defaults();
@@ -112,7 +112,7 @@ function homeView() {
   const seg = ['auto', 'morning', 'day', 'evening'].map((k, i) => `<button class="${S.settings.mode === k ? 'on' : ''}" data-act="mode" data-mode="${k}">${['Авто', 'Утро', 'День', 'Вечер'][i]}</button>`).join('');
   let out = `<div class="grid2"><section class="card"><div class="clock" id="clock">${L.formatTime(now)}</div><div class="date" id="date">${esc(L.formatDateRu(now))}</div><div class="muted tiny" style="margin-top:8px">Режим: ${{ morning: 'утро', day: 'день', evening: 'вечер' }[m]}${S.settings.mode === 'auto' ? ' (по времени)' : ' (вручную)'}</div></section>${weatherCard()}</div><div class="seg">${seg}</div>${claudeCard()}`;
   const todayCard = `<section class="card"><h2>Сегодня</h2>${g.overdue.length ? `<div class="chip bad">Просрочено: ${g.overdue.length}</div>${taskList(g.overdue)}` : ''}${taskList(g.today)}${quickTask(today, '+ задача на сегодня')}</section>`;
-  out = reviewCard() + out;
+  out = reviewCard() + out + shiftCard();
   if (m === 'morning') out += `<div class="grid2">${todayCard}${projectsNext()}</div><div class="grid2">${routineCard('morning')}${timeCard()}</div>${newsCard()}`;
   else if (m === 'day') out += `<div class="grid2">${todayCard}${projectsSummary()}</div><div class="grid2">${timeCard()}${ratesCard(true)}</div>`;
   else {
@@ -385,6 +385,59 @@ ${ui.cityResults ? (ui.cityResults.length ? ui.cityResults.map((c, i) => `<div c
 <section class="card"><h2>Проекты</h2><p class="muted">projects.json обновлён: <b>${esc(S.remote.updated || 'ещё не загружен')}</b></p><button class="btn" data-act="projects-refresh">Обновить проекты</button></section>
 <section class="card"><h2>Обновления</h2><p class="muted">Пульт обновляется сам: новая версия скачивается в фоне, и страница перезагружается, когда ты ничего не вводишь. Кнопка ниже — если хочется прямо сейчас.</p><button class="btn" data-act="app-update">Обновить Пульт</button><p class="muted tiny" style="margin-top:8px">Версия ${esc(VERSION)}</p></section>`;
 }
+/* ---------- График смен ---------- */
+const schKey = (iso) => iso.slice(0, 7);
+const schMonths = () => Object.values((S.schedule && S.schedule.months) || {});
+const schFor = (iso) => (S.schedule && S.schedule.months && S.schedule.months[schKey(iso)]) || null;
+const shiftText = (c) => (!c ? '' : c.off ? 'выходной' : c.from ? c.from.replace(/^0/, '').replace(':00', '') + '–' + c.to.replace(/^0/, '').replace(':00', '') : c.note);
+const dayLabel = (iso) => `${L.weekdayShort(iso)}, ${L.formatShortRu(iso)}`;
+function schStatus() {
+  const s = S.schedule;
+  if (ui.schState === 'loading' && !s) return 'Загружаю график…';
+  if (!s) return ui.schState === 'fail' ? `Не удалось открыть таблицу: ${esc(ui.schError || 'нет сети')}` : 'График ещё не загружен';
+  return `Таблица прочитана ${esc(L.timeAgoRu(s.fetchedAt || new Date(s.at).toISOString()))}${ui.schState === 'fail' ? ` · <span class="warnc">сейчас таблица не открылась (${esc(ui.schError || 'нет сети')}), показан сохранённый график</span>` : ''}`;
+}
+function myDayLine(iso, title) {
+  const me = L.SHIFTS_ME, sch = schFor(iso), d = Number(iso.slice(8));
+  if (!sch) return '';
+  const p = L.findPerson(sch, me), c = p && p.days[d];
+  return `<div class="stat">${title}: <b>${c && c.from ? 'смена ' + esc(shiftText(c)) : c && c.note ? esc(c.note) : 'выходной'}</b></div>`;
+}
+function changesBlock(limit) {
+  const ch = (S.schedule && S.schedule.changes) || [];
+  if (!ch.length || S.schedule.changesSeen) return '';
+  const list = [...ch].sort((a, b) => a.date.localeCompare(b.date)).slice(0, limit);
+  return `<div class="schchg"><div class="row space"><b class="warnc">График изменился</b><button class="btn small ghost" data-act="sch-seen">Понятно</button></div>${list.map((x) => `<div class="tiny">${esc(dayLabel(x.date))}: ${esc(x.was)} → <b>${esc(x.now)}</b></div>`).join('')}${ch.length > limit ? `<div class="muted tiny">и ещё ${ch.length - limit}</div>` : ''}</div>`;
+}
+function shiftCard() {
+  if (!S.schedule) return '';
+  const today = todayISO(), tomorrow = L.addDays(today, 1), sch = schFor(today);
+  const next = L.nextShifts(schMonths(), L.SHIFTS_ME, tomorrow, 1)[0];
+  const body = sch ? `${myDayLine(today, 'Сегодня')}${myDayLine(tomorrow, 'Завтра')}${next ? `<div class="stat">Следующая смена: <b>${esc(dayLabel(next.date))}, ${esc(shiftText(next))}</b></div>` : ''}` : `<p class="muted">${schStatus()}</p>`;
+  return `<section class="card"><div class="row space"><h2>🧋 Смены Мими Руш</h2><button class="btn small ghost" data-act="go-shifts">График</button></div>${changesBlock(3)}${body}</section>`;
+}
+function shiftsView() {
+  const today = todayISO(), me = L.SHIFTS_ME;
+  const months = schMonths().sort((a, b) => (a.y - b.y) || (a.m - b.m));
+  const key = ui.schMonth && S.schedule && S.schedule.months[ui.schMonth] ? ui.schMonth : schKey(today);
+  const sch = (S.schedule && S.schedule.months[key]) || null;
+  if (!S.schedule) return `<section class="card"><div class="row space"><span class="muted">${schStatus()}</span><button class="btn small ghost" data-act="sch-refresh">Обновить</button></div><p class="muted tiny">График берётся из Google Таблицы «График Мими Руш»: GitHub раз в 30 минут кладёт на сайт Пульта только твои смены. Как подключить — README, раздел «График смен».</p></section>`;
+  let out = `<section class="card"><div class="row space"><span class="muted tiny">${schStatus()} · обновляется раз в 30 минут</span><button class="btn small ghost" data-act="sch-refresh">Обновить</button></div>${changesBlock(12)}</section>`;
+  if (me) {
+    const list = L.nextShifts(months, me, today, 8);
+    out += `<section class="card"><h2>Мои смены</h2>${list.length ? list.map((x) => `<div class="item"><div class="grow">${x.date === today ? '<b>Сегодня</b>' : esc(dayLabel(x.date))}</div><span class="chip">${esc(shiftText(x))}</span></div>`).join('') : '<div class="empty">Ближайших смен в графике нет</div>'}</section>`;
+  }
+  if (months.length > 1) out += `<div class="seg">${months.map((m) => { const k = `${m.y}-${String(m.m).padStart(2, '0')}`; return `<button class="${k === key ? 'on' : ''}" data-act="sch-month" data-k="${k}">${esc(L.MONTHS_RU[m.m - 1])}</button>`; }).join('')}</div>`;
+  if (sch) {
+    const iso = (d) => `${key}-${String(d).padStart(2, '0')}`;
+    const ds = Array.from({ length: sch.days }, (_, i) => i + 1);
+    const cell = (c) => (!c ? '' : c.off ? '<span class="muted">вых</span>' : c.from ? esc(shiftText(c)) : `<span class="muted">${esc(c.note)}</span>`);
+    out += `<section class="card"><h2>${esc(L.MONTHS_RU[sch.m - 1])} ${sch.y}</h2><div class="schwrap"><table class="sch"><thead><tr><th></th>${ds.map((d) => `<th class="${iso(d) === today ? 'today' : ''} ${[0, 6].includes(L.fromISO(iso(d)).getDay()) ? 'we' : ''}">${d}<br><span class="muted">${L.weekdayShort(iso(d))}</span></th>`).join('')}</tr></thead>
+<tbody>${sch.people.map((p) => `<tr class="me"><th>Я</th>${ds.map((d) => `<td class="${iso(d) === today ? 'today' : ''} ${p.days[d] && p.days[d].from ? 'on' : ''}">${cell(p.days[d])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+<p class="muted tiny">Пустая клетка — тебя нет в графике в этот день, «вых» — выходной.</p></section>`;
+  } else if (S.schedule) out += `<div class="empty">В таблице пока нет листа «${esc(L.scheduleSheetName(Number(key.slice(0, 4)), Number(key.slice(5))))}».</div>`;
+  return out;
+}
 function moreView() {
   const subs = [['habits', 'Привычки'], ['routines', 'Рутины'], ['goals', 'Цели'], ['shopping', 'Покупки'], ['finance', 'Финансы'], ['stats', 'Статистика'], ['settings', 'Настройки']];
   return `<div class="seg wrap">${subs.map(([k, t]) => `<button class="${ui.more === k ? 'on' : ''}" data-act="more" data-k="${k}">${t}</button>`).join('')}</div>${{ habits: habitsView, routines: routinesView, goals: goalsView, shopping: shoppingView, finance: financeView, stats: statsView, settings: settingsView }[ui.more]()}`;
@@ -422,8 +475,8 @@ function importBackup(file) {
 }
 
 /* ---------- Отрисовка ---------- */
-const TABS = [['home', '🏠', 'Главная'], ['projects', '📁', 'Проекты'], ['tasks', '✅', 'Задачи'], ['notes', '📝', 'Заметки'], ['news', '📰', 'Новости'], ['more', '⋯', 'Ещё']];
-const VIEWS = { home: homeView, projects: projectsView, tasks: tasksView, notes: notesView, news: newsView, more: moreView };
+const TABS = [['home', '🏠', 'Главная'], ['projects', '📁', 'Проекты'], ['tasks', '✅', 'Задачи'], ['notes', '📝', 'Заметки'], ['news', '📰', 'Новости'], ['shifts', '🧋', 'Смены'], ['more', '⋯', 'Ещё']];
+const VIEWS = { home: homeView, projects: projectsView, tasks: tasksView, notes: notesView, news: newsView, shifts: shiftsView, more: moreView };
 function renderTabs() {
   $('#tabs').innerHTML = TABS.map(([k, ic, t]) => `<button class="${ui.tab === k ? 'on' : ''}" data-tab="${k}"><span class="ic">${ic}</span>${t}</button>`).join('');
 }
@@ -454,6 +507,9 @@ function render() {
   for (const [k, v] of keep) { const [f, n] = k.split('/'); const el = view.querySelector(`form[data-form="${f}"] [name="${n}"]`); if (el && !el.value) el.value = v; }
   renderModal();
   window.scrollTo(0, scroll);
+  // В таблице смен сразу видно сегодняшнее число.
+  const wrap = view.querySelector('.schwrap'), td = wrap && wrap.querySelector('th.today');
+  if (td) wrap.scrollLeft = Math.max(0, td.offsetLeft - 140);
   ui.lastKey = renderKey();
 }
 const renderKey = () => `${mode()}|${L.isNight(S.settings, hour())}|${todayISO()}|${ui.tab === 'home' ? Math.floor(Date.now() / 900000) : ''}`;
@@ -561,6 +617,27 @@ async function loadNews(force) {
   } catch { ui.nwState = 'fail'; if (force) toast('Не удалось обновить новости'); }
   if ((ui.tab === 'news' || ui.tab === 'home') && !ui.modal && !document.activeElement?.matches?.('input, textarea, select')) render();
 }
+async function loadSchedule(force) {
+  if (!force && S.schedule && Date.now() - S.schedule.at < 9 * 60000) return;
+  if (loadSchedule.busy) return; loadSchedule.busy = true;
+  ui.schState = 'loading';
+  try {
+    const today = todayISO();
+    let j;
+    try { j = await getJson('./data/shifts.json?t=' + Math.floor(Date.now() / 60000)); } catch (e) { throw new Error(/404/.test(e && e.message) ? 'на сайте графика пока нет' : e && e.name === 'AbortError' ? 'таймаут' : 'нет сети'); }
+    const d = L.parseSiteShifts(j); if (!d) throw new Error('формат');
+    const prev = S.schedule;
+    let changes = [];
+    if (prev && prev.months) for (const k of Object.keys(d.months)) changes = changes.concat(L.scheduleChanges(prev.months[k], d.months[k], today));
+    const keep = prev && !changes.length ? { changes: (prev.changes || []).filter((x) => x.date >= today), changesSeen: prev.changesSeen } : { changes, changesSeen: false };
+    S.schedule = { at: Date.now(), fetchedAt: d.fetchedAt, months: d.months, ...keep };
+    ui.schState = 'ok'; ui.schError = ''; save();
+    if (changes.length) toast('Твой график в Мими Руш изменился');
+    else if (force) toast('График обновлён');
+  } catch (e) { ui.schState = 'fail'; ui.schError = (e && e.message) || 'ошибка'; if (force) toast('Не удалось обновить график'); }
+  loadSchedule.busy = false;
+  if ((ui.tab === 'shifts' || ui.tab === 'home') && !ui.modal && !document.activeElement?.matches?.('input, textarea, select')) render();
+}
 async function loadRates(force) {
   if (!force && S.rates && Date.now() - S.rates.at < 6 * 3600000) return;
   try {
@@ -619,6 +696,10 @@ const ACTS = {
   'export-copy': copyBackup,
   'rates-refresh': () => loadRates(true),
   'news-refresh': () => loadNews(true),
+  'sch-refresh': () => loadSchedule(true),
+  'sch-seen': () => { if (S.schedule) { S.schedule.changesSeen = true; save(); render(); } },
+  'sch-month': (d) => { ui.schMonth = d.k; render(); },
+  'go-shifts': () => { ui.tab = 'shifts'; ui.modal = null; render(); window.scrollTo(0, 0); loadSchedule(false); },
   'news-save': (d) => {
     const x = (S.news && S.news.items || []).find((n) => n.link === d.link) || S.savedNews.find((n) => n.link === d.link); if (!x) return;
     const was = isSaved(x.link); S.savedNews = L.toggleSavedNews(S.savedNews, x); save(); render(); toast(was ? 'Убрано из «На потом»' : 'Отложено в «На потом»');
@@ -684,7 +765,7 @@ document.addEventListener('click', (e) => {
   if (ui.ambient) { hideAmbient(); return; }
   if (e.target.id === 'modal') { ui.modal = null; render(); return; }
   const tab = e.target.closest('[data-tab]');
-  if (tab) { if (ui.rec && tab.dataset.tab !== 'notes') ui.rec.finishSoon(); ui.tab = tab.dataset.tab; ui.modal = null; render(); if (ui.tab === 'news') loadNews(false); window.scrollTo(0, 0); return; }
+  if (tab) { if (ui.rec && tab.dataset.tab !== 'notes') ui.rec.finishSoon(); ui.tab = tab.dataset.tab; ui.modal = null; render(); if (ui.tab === 'news') loadNews(false); if (ui.tab === 'shifts') loadSchedule(false); window.scrollTo(0, 0); return; }
   const a = e.target.closest('[data-act]');
   if (a && ACTS[a.dataset.act]) ACTS[a.dataset.act](a.dataset);
 });
@@ -783,7 +864,7 @@ async function boot() {
   window.__pultBooted = true;
   persist();
   setInterval(tick, 15000);
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { ui.lastTouch = Date.now(); tick(); loadWeather(false); loadClaude(); loadRates(false); loadNews(false); } });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { ui.lastTouch = Date.now(); tick(); loadWeather(false); loadClaude(); loadRates(false); loadNews(false); loadSchedule(false); } });
   setInterval(() => { if (document.visibilityState === 'visible') loadWeather(false); }, 15 * 60000);
   setInterval(() => { if (document.visibilityState === 'visible') loadClaude(); }, 120000);
   setupUpdates();
@@ -793,5 +874,7 @@ async function boot() {
   loadRates(false);
   loadNews(false);
   setInterval(() => { if (document.visibilityState === 'visible') loadNews(false); }, 30 * 60000);
+  loadSchedule(false);
+  setInterval(() => { if (document.visibilityState === 'visible') loadSchedule(false); }, 10 * 60000);
 }
 boot().catch((e) => { console.error(e); window.__pultFail?.(); });

@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-  # Каждые 30 минут: свежая погода в data/weather.json и новости в data/news.json (для iPad, которому внешние сайты напрямую недоступны).
+  # Каждые 30 минут: свежая погода в data/weather.json, новости в data/news.json и смены в data/shifts.json (для iPad, которому внешние сайты напрямую недоступны).
   schedule:
     - cron: '7,37 * * * *'
 permissions:
@@ -30,6 +30,11 @@ jobs:
       - run: node scripts/fetch-news.mjs
         env:
           GITHUB_TOKEN: ${{ github.token }}
+      # Смены Мими Руш: только свои, без имён коллег. Ссылка на таблицу и имя лежат в секретах репозитория.
+      - run: node scripts/fetch-shifts.mjs
+        env:
+          SCHEDULE_SHEET_ID: ${{ secrets.SCHEDULE_SHEET_ID }}
+          SCHEDULE_NAME: ${{ secrets.SCHEDULE_NAME }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

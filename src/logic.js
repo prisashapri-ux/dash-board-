@@ -399,3 +399,130 @@ export function toggleSavedNews(list, x, now = Date.now()) {
 export function sortSavedNews(list) {
   return [...(list || [])].sort((a, b) => (a.done - b.done) || (Date.parse(b.savedAt) - Date.parse(a.savedAt)));
 }
+
+/* ---------- График смен (Google Таблица) ---------- */
+export const MONTHS_RU = MONTHS_NOM;
+const WD_RU = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+// ID таблицы из ссылки «Поделиться» или голый ID.
+export function sheetIdFromLink(text) {
+  const s = String(text || '').trim();
+  const m = s.match(/\/spreadsheets\/d\/([A-Za-z0-9_-]{20,})/);
+  if (m) return m[1];
+  return /^[A-Za-z0-9_-]{20,}$/.test(s) ? s : '';
+}
+export const scheduleSheetName = (y, m) => `${MONTHS_RU[m - 1]} ${y}`;
+export function scheduleUrl(id, sheet) {
+  return `https://docs.google.com/spreadsheets/d/${encodeURIComponent(id)}/gviz/tq?tqx=out:csv&headers=0&range=A1:AK40&sheet=${encodeURIComponent(sheet)}`;
+}
+export function parseCsv(text) {
+  const rows = []; let row = [], cell = '', q = false;
+  const s = String(text || '');
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (q) { if (c === '"') { if (s[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += c; }
+    else if (c === '"') q = true;
+    else if (c === ',') { row.push(cell); cell = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && s[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+    else cell += c;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+const monthDays = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+const SHIFT_RE = /^(\d{1,2})(?:[:.](\d{2}))?\s*[-–—]\s*(\d{1,2})(?:[:.](\d{2}))?$/;
+// Ячейка: смена «9-22», выходной «Х», пусто — не в графике.
+export function shiftCell(v) {
+  const s = String(v || '').trim();
+  if (!s) return null;
+  if (/^[XxХх]$/.test(s)) return { off: true };
+  const m = s.match(SHIFT_RE);
+  if (m) {
+    const pad = (h, mm) => String(Number(h)).padStart(2, '0') + ':' + (mm || '00');
+    return { from: pad(m[1], m[2]), to: pad(m[3], m[4]), text: s.replace(/\s+/g, '') };
+  }
+  return { note: s.slice(0, 20) };
+}
+// Разбор листа месяца: строки с именами и смены по дням. Столбец первого числа ищется по строке дней недели.
+export function parseSchedule(csvOrRows, y, m) {
+  const rows = Array.isArray(csvOrRows) ? csvOrRows : parseCsv(csvOrRows);
+  const n = monthDays(y, m), wd1 = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
+  let start = -1, wdRow = -1;
+  for (let r = 0; r < Math.min(rows.length, 12) && start < 0; r++) {
+    const cells = rows[r].map((c) => String(c || '').trim().toLowerCase());
+    if (cells.filter((c) => WD_RU.includes(c)).length < 7) continue;
+    wdRow = r;
+    const i = cells.findIndex((c) => WD_RU.includes(c));
+    // Первый день недели в строке должен совпасть с 1-м числом, иначе это лист другого месяца.
+    if (![0, 1, 2, 3, 4, 5, 6].every((k) => cells[i + k] === WD_RU[(wd1 + k) % 7])) return null;
+    start = i;
+  }
+  if (start < 0) start = 4;
+  const people = [];
+  let began = false;
+  for (let r = wdRow + 1; r < rows.length; r++) {
+    const row = rows[r], name = String(row[0] || '').trim();
+    const blank = row.every((c) => !String(c || '').trim());
+    if (/^(дата|имя)$/i.test(name) || row.some((c) => /^дата$/i.test(String(c || '').trim()))) break;
+    if (blank) { if (began) break; continue; }
+    if (!name || !/[A-Za-zА-Яа-яЁё]/.test(name) || name.length > 30) continue;
+    const days = {};
+    let any = false;
+    for (let d = 1; d <= n; d++) { const c = shiftCell(row[start + d - 1]); if (c) { days[d] = c; any = true; } }
+    if (!any) continue;
+    began = true;
+    people.push({ name, days });
+  }
+  return people.length ? { y, m, days: n, people } : null;
+}
+const normName = (s) => String(s || '').trim().toLowerCase().replace(/ё/g, 'е');
+export const findPerson = (sch, name) => (sch && name ? sch.people.find((p) => normName(p.name) === normName(name)) : null) || null;
+// Кто работает в этот день.
+export function workingOn(sch, d) {
+  return sch ? sch.people.filter((p) => p.days[d] && p.days[d].from).map((p) => ({ name: p.name, ...p.days[d] })) : [];
+}
+// Ближайшие смены человека, начиная с даты (ISO), по нескольким месяцам.
+export function nextShifts(months, name, fromISO, limit = 7) {
+  const out = [];
+  for (const sch of (months || []).filter(Boolean).sort((a, b) => (a.y - b.y) || (a.m - b.m))) {
+    const p = findPerson(sch, name); if (!p) continue;
+    for (let d = 1; d <= sch.days; d++) {
+      const iso = `${sch.y}-${String(sch.m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      if (iso < fromISO || !p.days[d] || !p.days[d].from) continue;
+      out.push({ date: iso, ...p.days[d] });
+      if (out.length >= limit) return out;
+    }
+  }
+  return out;
+}
+// Что поменялось в графике между двумя загрузками (только будущие дни, начиная с сегодня).
+export function scheduleChanges(prev, next, fromISO) {
+  if (!prev || !next || prev.y !== next.y || prev.m !== next.m) return [];
+  const label = (c) => (!c ? 'нет в графике' : c.off ? 'выходной' : c.text || c.note || '');
+  const out = [];
+  const names = [...new Set([...prev.people, ...next.people].map((p) => p.name))];
+  for (let d = 1; d <= next.days; d++) {
+    const iso = `${next.y}-${String(next.m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    if (iso < fromISO) continue;
+    for (const nm of names) {
+      const a = findPerson(prev, nm)?.days[d], b = findPerson(next, nm)?.days[d];
+      if (label(a) !== label(b)) out.push({ date: iso, name: nm, was: label(a), now: label(b) });
+    }
+  }
+  return out;
+}
+// data/shifts.json с сайта → месяцы в том же виде, что parseSchedule, с одним человеком «Я».
+export const SHIFTS_ME = 'Я';
+export function parseSiteShifts(j) {
+  if (!j || !Array.isArray(j.months)) return null;
+  const months = {};
+  for (const x of j.months) {
+    if (!x || !Number.isInteger(x.y) || !Number.isInteger(x.m) || x.m < 1 || x.m > 12 || !x.shifts || typeof x.shifts !== 'object') continue;
+    const days = {};
+    for (const [d, c] of Object.entries(x.shifts)) {
+      if (!c || typeof c !== 'object') continue;
+      days[Number(d)] = c.off ? { off: true } : c.from ? { from: String(c.from), to: String(c.to), text: String(c.text || '') } : { note: String(c.note || '').slice(0, 20) };
+    }
+    months[`${x.y}-${String(x.m).padStart(2, '0')}`] = { y: x.y, m: x.m, days: monthDays(x.y, x.m), people: [{ name: SHIFTS_ME, days }] };
+  }
+  return Object.keys(months).length ? { fetchedAt: j.fetchedAt || null, months } : null;
+}
