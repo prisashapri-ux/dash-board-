@@ -388,3 +388,13 @@ export function timeAgoRu(iso, now = Date.now()) {
   if (isoDate(d) === isoDate(y)) return 'вчера';
   return formatShortRu(isoDate(d));
 }
+/** Отметка «изучить позже»: добавляет копию новости в начало списка или снимает её (ключ — ссылка). */
+export function toggleSavedNews(list, x, now = Date.now()) {
+  const l = Array.isArray(list) ? list : [];
+  if (l.some((s) => s.link === x.link)) return l.filter((s) => s.link !== x.link);
+  return [{ link: x.link, title: x.title, source: x.source || '', topic: x.topic || '', date: x.date || '', desc: x.desc || '', savedAt: new Date(now).toISOString(), done: false }, ...l];
+}
+/** Список «На потом»: сначала неизученные (новые отметки сверху), изученные в конце. */
+export function sortSavedNews(list) {
+  return [...(list || [])].sort((a, b) => (a.done - b.done) || (Date.parse(b.savedAt) - Date.parse(a.savedAt)));
+}

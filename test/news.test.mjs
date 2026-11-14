@@ -76,3 +76,13 @@ test('у редких тем окно свежести шире', () => {
   const r = N.buildNews([{ topic: 'github', title: 'g', link: 'https://x', date: d }, { topic: 'tech', title: 't', link: 'https://x', date: d }], now, { ageByTopic: L.NEWS_MAX_AGE_H });
   assert.deepEqual(r.map((x) => x.topic), ['github']);
 });
+test('«На потом»: отметить, снять, порядок', () => {
+  const a = { link: 'https://a', title: 'A', source: 's', topic: 'ai', date: '' }, b = { link: 'https://b', title: 'B' };
+  let l = L.toggleSavedNews([], a, Date.parse('2026-11-14T10:00:00Z'));
+  l = L.toggleSavedNews(l, b, Date.parse('2026-11-14T11:00:00Z'));
+  assert.deepEqual(l.map((x) => x.title), ['B', 'A']);
+  assert.equal(l[1].done, false);
+  l[0].done = true;
+  assert.deepEqual(L.sortSavedNews(l).map((x) => x.title), ['A', 'B']);
+  assert.deepEqual(L.toggleSavedNews(l, a).map((x) => x.title), ['B']);
+});

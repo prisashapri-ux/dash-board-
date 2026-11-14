@@ -15,7 +15,7 @@ function defaults() {
     finance: { entries: [], budget: 0 },
     settings: { ...L.DEFAULT_SETTINGS },
     projects: [], remote: { updated: null, projects: [] }, weather: null, claude: null,
-    goals: [], countdowns: [], journal: {}, shopping: [], menu: ['', '', '', '', '', '', ''], rates: null, news: null,
+    goals: [], countdowns: [], journal: {}, shopping: [], menu: ['', '', '', '', '', '', ''], rates: null, news: null, savedNews: [],
     routines: { morning: L.DEFAULT_ROUTINES.morning.map((title, i) => ({ id: 'rm' + (i + 1), title })), evening: L.DEFAULT_ROUTINES.evening.map((title, i) => ({ id: 're' + (i + 1), title })), checks: {} },
   };
 }
@@ -36,6 +36,7 @@ function normalize(raw) {
     goals: Array.isArray(r.goals) ? r.goals : [], countdowns: Array.isArray(r.countdowns) ? r.countdowns : [],
     journal: r.journal && typeof r.journal === 'object' ? r.journal : {}, shopping: Array.isArray(r.shopping) ? r.shopping : [],
     menu: Array.isArray(r.menu) && r.menu.length === 7 ? r.menu : d.menu,
+    savedNews: Array.isArray(r.savedNews) ? r.savedNews.filter((x) => x && /^https?:\/\//.test(x.link || '')) : [],
     routines: { morning: Array.isArray(r.routines?.morning) ? r.routines.morning : d.routines.morning, evening: Array.isArray(r.routines?.evening) ? r.routines.evening : d.routines.evening, checks: r.routines?.checks || {} },
   };
 }
@@ -166,8 +167,19 @@ function ratesCard(compact) {
 
 /* ---------- Новости ---------- */
 const topicName = (k) => (L.NEWS_TOPICS.find((t) => t[0] === k) || [k, k])[1];
+const isSaved = (link) => S.savedNews.some((s) => s.link === link);
 function newsItem(x, short) {
-  return `<a class="news" href="${esc(x.link)}" target="_blank" rel="noopener noreferrer"><span class="nt">${esc(x.title)}</span>${!short && x.desc ? `<span class="nd">${esc(x.desc)}</span>` : ''}<span class="nm">${esc(x.source)} · ${esc(L.timeAgoRu(x.date))}${ui.newsTopic === 'all' || short ? ` · ${esc(topicName(x.topic))}` : ''}</span></a>`;
+  const on = isSaved(x.link);
+  return `<div class="newsrow"><a class="news" href="${esc(x.link)}" target="_blank" rel="noopener noreferrer"><span class="nt">${esc(x.title)}</span>${!short && x.desc ? `<span class="nd">${esc(x.desc)}</span>` : ''}<span class="nm">${esc(x.source)} · ${esc(L.timeAgoRu(x.date))}${ui.newsTopic === 'all' || short ? ` · ${esc(topicName(x.topic))}` : ''}</span></a><button class="bm ${on ? 'on' : ''}" data-act="news-save" data-link="${esc(x.link)}" aria-label="${on ? 'Убрать из «На потом»' : 'Изучить позже'}">${on ? '★' : '☆'}</button></div>`;
+}
+function savedItem(x) {
+  return `<div class="newsrow ${x.done ? 'done' : ''}"><button class="chk ${x.done ? 'on' : ''}" data-act="saved-done" data-link="${esc(x.link)}" aria-label="Изучено"></button><a class="news" href="${esc(x.link)}" target="_blank" rel="noopener noreferrer"><span class="nt">${esc(x.title)}</span>${x.desc ? `<span class="nd">${esc(x.desc)}</span>` : ''}<span class="nm">${esc(x.source)}${x.topic ? ' · ' + esc(topicName(x.topic)) : ''} · отложено ${esc(L.timeAgoRu(x.savedAt))}</span></a><button class="bm" data-act="saved-del" data-link="${esc(x.link)}" aria-label="Удалить">✕</button></div>`;
+}
+function savedView() {
+  const l = L.sortSavedNews(S.savedNews), left = l.filter((x) => !x.done).length;
+  return `<section class="card"><div class="row space"><h2>На потом: ${left}</h2>${l.length > left ? '<button class="btn small ghost" data-act="saved-clear">Убрать изученные</button>' : ''}</div>
+${l.length ? l.map(savedItem).join('') : '<div class="empty">Пока пусто. Нажми ☆ рядом с новостью, чтобы отложить её для подробного изучения.</div>'}
+<p class="muted tiny" style="margin-top:8px">Отметки хранятся на этом устройстве и входят в резервную копию.</p></section>`;
 }
 function newsStatus() {
   const n = S.news;
@@ -179,9 +191,12 @@ function newsCard() {
   return `<section class="card"><div class="row space"><h2>Новости</h2><button class="btn small ghost" data-act="go-news">Все новости</button></div>${list.length ? list.map((x) => newsItem(x, true)).join('') : `<p class="muted">${newsStatus()}</p>`}</section>`;
 }
 function newsView() {
-  const hidden = S.settings.newsHidden, topics = [['all', 'Все'], ...L.NEWS_TOPICS];
+  const hidden = S.settings.newsHidden, left = S.savedNews.filter((x) => !x.done).length;
+  const topics = [['saved', `★ На потом${left ? ' (' + left + ')' : ''}`], ['all', 'Все'], ...L.NEWS_TOPICS];
+  const seg = `<div class="seg wrap">${topics.map(([k, t]) => `<button class="${ui.newsTopic === k ? 'on' : ''}" data-act="news-topic" data-k="${k}">${t}</button>`).join('')}</div>`;
+  if (ui.newsTopic === 'saved') return seg + savedView();
   const list = L.newsFor(S.news && S.news.items, ui.newsTopic, hidden);
-  return `<div class="seg wrap">${topics.map(([k, t]) => `<button class="${ui.newsTopic === k ? 'on' : ''}" data-act="news-topic" data-k="${k}">${t}</button>`).join('')}</div>
+  return `${seg}
 <section class="card"><div class="row space"><span class="muted tiny">${newsStatus()}</span><button class="btn small ghost" data-act="news-refresh">Обновить</button></div>
 ${list.length ? list.map((x) => newsItem(x, false)).join('') : S.news ? '<div class="empty">В этой теме пока нет свежих новостей.</div>' : ''}</section>
 <section class="card"><h2>Темы во вкладке «Все»</h2><p class="muted tiny">Нажми, чтобы скрыть тему из общей ленты и с главной. Отдельной кнопкой она остаётся.</p><div class="row wrap gap">${L.NEWS_TOPICS.map(([k, t]) => `<button class="btn small ${hidden.includes(k) ? '' : 'primary'}" data-act="news-hide" data-k="${k}">${hidden.includes(k) ? '' : '✓ '}${t}</button>`).join('')}</div></section>`;
@@ -377,7 +392,7 @@ function moreView() {
 
 /* ---------- Резервная копия ---------- */
 function backupObject() {
-  return { app: 'pult', version: 1, exportedAt: new Date().toISOString(), data: { tasks: S.tasks, notes: S.notes, habits: S.habits, finance: S.finance, settings: S.settings, projects: S.projects, goals: S.goals, countdowns: S.countdowns, journal: S.journal, routines: S.routines, shopping: S.shopping, menu: S.menu } };
+  return { app: 'pult', version: 1, exportedAt: new Date().toISOString(), data: { tasks: S.tasks, notes: S.notes, habits: S.habits, finance: S.finance, settings: S.settings, projects: S.projects, goals: S.goals, countdowns: S.countdowns, journal: S.journal, routines: S.routines, shopping: S.shopping, menu: S.menu, savedNews: S.savedNews } };
 }
 let blobUrl = '';
 function backupUrl() {
@@ -604,6 +619,13 @@ const ACTS = {
   'export-copy': copyBackup,
   'rates-refresh': () => loadRates(true),
   'news-refresh': () => loadNews(true),
+  'news-save': (d) => {
+    const x = (S.news && S.news.items || []).find((n) => n.link === d.link) || S.savedNews.find((n) => n.link === d.link); if (!x) return;
+    const was = isSaved(x.link); S.savedNews = L.toggleSavedNews(S.savedNews, x); save(); render(); toast(was ? 'Убрано из «На потом»' : 'Отложено в «На потом»');
+  },
+  'saved-done': (d) => { const x = S.savedNews.find((n) => n.link === d.link); if (x) { x.done = !x.done; save(); render(); } },
+  'saved-del': (d) => { S.savedNews = S.savedNews.filter((n) => n.link !== d.link); save(); render(); },
+  'saved-clear': () => { S.savedNews = S.savedNews.filter((n) => !n.done); save(); render(); },
   'news-topic': (d) => { ui.newsTopic = d.k; render(); window.scrollTo(0, 0); },
   'news-hide': (d) => { const h = S.settings.newsHidden; S.settings.newsHidden = h.includes(d.k) ? h.filter((x) => x !== d.k) : [...h, d.k]; save(); render(); },
   'go-news': () => { ui.tab = 'news'; ui.modal = null; render(); window.scrollTo(0, 0); loadNews(false); },
