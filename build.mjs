@@ -14,6 +14,9 @@ for (const f of fs.readdirSync(src)) if (!['sw.js', 'index.html'].includes(f)) c
 const icons = path.join(root, 'icons');
 for (const f of fs.existsSync(icons) ? fs.readdirSync(icons) : []) copy(path.join(icons, f), f);
 fs.writeFileSync(path.join(dist, '.nojekyll'), '');
+// data/ из репозитория (график смен, его раз в день обновляет Claude) кладём на сайт как есть.
+const data = path.join(root, 'data');
+if (fs.existsSync(data)) { fs.mkdirSync(path.join(dist, 'data'), { recursive: true }); for (const f of fs.readdirSync(data)) if (f.endsWith('.json')) copy(path.join(data, f), path.join('data', f)); }
 
 const files = [];
 // Папка data/ (погода из GitHub Actions) меняется каждые 30 минут: в версию и офлайн-список её не включаем,
