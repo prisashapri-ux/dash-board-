@@ -53,20 +53,33 @@ export function splitGoogleTitle(title) {
   return i > 10 ? { title: title.slice(0, i).trim(), source: title.slice(i + 3).trim() } : { title, source: '' };
 }
 
-const norm = (s) => s.toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/g, ' ').trim().slice(0, 80);
+const norm = (s) => s.toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/g, ' ').trim();
+const STOP = new Set(['это', 'будет', 'может', 'стал', 'стала', 'после', 'более', 'about', 'with', 'from', 'that', 'this', 'what', 'your', 'have', 'will', 'новый', 'новая', 'новое', 'новые']);
+/** Основы значимых слов заголовка: первые 5 букв слов от 4 букв. */
+export function titleStems(title) {
+  return new Set(norm(title).split(' ').filter((w) => w.length >= 4 && !STOP.has(w)).map((w) => w.slice(0, 5)));
+}
+/** Одна и та же новость: совпадает ссылка, заголовок или почти все значимые слова. */
+export function sameStory(a, b) {
+  if (a.link === b.link || a.key === b.key) return true;
+  if (Math.min(a.stems.size, b.stems.size) < 3) return false;
+  let common = 0; for (const w of a.stems) if (b.stems.has(w)) common++;
+  return common / (a.stems.size + b.stems.size - common) > 0.6; // доля общих слов среди всех
+}
 
 /**
- * Собирает итоговый список: свежие (не старше maxAgeH), без повторов по заголовку, новые сверху,
- * не больше perTopic на тему. items: [{ topic, source, title, link, date, desc }].
+ * Собирает итоговый список: свежие (не старше maxAgeH, у тем из ageByTopic своё окно), новые сверху,
+ * без повторов одной новости из разных лент и тем, не больше perTopic на тему.
  */
 export function buildNews(items, now = Date.now(), { maxAgeH = 48, perTopic = 30, ageByTopic = {} } = {}) {
-  const seen = new Set(), count = {}, out = [];
+  const kept = [], count = {}, out = [];
   const fresh = items.filter((x) => x.date && now - Date.parse(x.date) < (ageByTopic[x.topic] || maxAgeH) * 3600000 && Date.parse(x.date) < now + 3600000)
     .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
   for (const x of fresh) {
-    const k = x.topic + '|' + norm(x.title);
-    if (seen.has(k) || (count[x.topic] || 0) >= perTopic) continue;
-    seen.add(k); count[x.topic] = (count[x.topic] || 0) + 1; out.push(x);
+    if ((count[x.topic] || 0) >= perTopic) continue;
+    const c = { link: x.link.replace(/[?#].*$/, '').replace(/\/$/, ''), key: norm(x.title), stems: titleStems(x.title) };
+    if (kept.some((k) => sameStory(c, k))) continue;
+    kept.push(c); count[x.topic] = (count[x.topic] || 0) + 1; out.push(x);
   }
   return out;
 }

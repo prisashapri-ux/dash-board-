@@ -35,7 +35,7 @@ test('Google Новости: источник отделяется от заго
 });
 test('сборка: свежие, без повторов, новые сверху, лимит на тему', () => {
   const now = Date.parse('2026-11-14T08:00:00Z');
-  const it = (title, h, topic = 'tech') => ({ topic, source: 's', title, link: 'https://x', date: new Date(now - h * 3600000).toISOString() });
+  const it = (title, h, topic = 'tech') => ({ topic, source: 's', title, link: 'https://x/' + encodeURIComponent(title), date: new Date(now - h * 3600000).toISOString() });
   const r = N.buildNews([it('Старая', 60), it('А', 5), it('Б', 1), it('а!', 2), it('В', 3, 'games'), { ...it('Без даты', 1), date: '' }], now, { perTopic: 5 });
   assert.deepEqual(r.map((x) => x.title), ['Б', 'а!', 'В']);
   assert.equal(N.buildNews([it('1', 1), it('2', 2), it('3', 3)], now, { perTopic: 2 }).length, 2);
@@ -85,4 +85,18 @@ test('«На потом»: отметить, снять, порядок', () => 
   l[0].done = true;
   assert.deepEqual(L.sortSavedNews(l).map((x) => x.title), ['A', 'B']);
   assert.deepEqual(L.toggleSavedNews(l, a).map((x) => x.title), ['B']);
+});
+test('повторы: одна новость из разных лент и тем показывается один раз', () => {
+  const now = Date.parse('2026-11-14T08:00:00Z');
+  const it = (title, h, topic, link) => ({ topic, source: 's', title, link, date: new Date(now - h * 3600000).toISOString() });
+  const r = N.buildNews([
+    it('Anthropic выпустила новую модель Claude с улучшенным кодированием', 1, 'ai', 'https://a/1'),
+    it('Компания Anthropic выпустила модель Claude: улучшенное кодирование', 2, 'ai', 'https://b/2'),
+    it('Совсем другая новость про видеокарты Nvidia', 3, 'tech', 'https://c/3'),
+    it('Другой заголовок той же ссылки', 4, 'tech', 'https://a/1?utm=x'),
+    it('Anthropic выпустила новую модель Claude с улучшенным кодированием', 5, 'tech', 'https://d/4'),
+    it('Valve выпустила патч для Dota 2', 6, 'games', 'https://e/5'),
+    it('Valve выпустила патч для Counter-Strike 2', 7, 'games', 'https://e/6'),
+  ], now);
+  assert.deepEqual(r.map((x) => x.link), ['https://a/1', 'https://c/3', 'https://e/5', 'https://e/6']);
 });

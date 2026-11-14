@@ -166,14 +166,14 @@ function ratesCard(compact) {
 }
 
 /* ---------- Новости ---------- */
-const topicName = (k) => (L.NEWS_TOPICS.find((t) => t[0] === k) || [k, k])[1];
+const topicName = (k) => (L.NEWS_TOPICS.find((t) => t[0] === k) || [k, ''])[1];
 const isSaved = (link) => S.savedNews.some((s) => s.link === link);
 function newsItem(x, short) {
   const on = isSaved(x.link);
-  return `<div class="newsrow"><a class="news" href="${esc(x.link)}" target="_blank" rel="noopener noreferrer"><span class="nt">${esc(x.title)}</span>${!short && x.desc ? `<span class="nd">${esc(x.desc)}</span>` : ''}<span class="nm">${esc(x.source)} · ${esc(L.timeAgoRu(x.date))}${ui.newsTopic === 'all' || short ? ` · ${esc(topicName(x.topic))}` : ''}</span></a><button class="bm ${on ? 'on' : ''}" data-act="news-save" data-link="${esc(x.link)}" aria-label="${on ? 'Убрать из «На потом»' : 'Изучить позже'}">${on ? '★' : '☆'}</button></div>`;
+  return `<div class="newsrow"><a class="news" href="${esc(x.link)}" target="_blank" rel="noopener noreferrer"><span class="nt">${esc(x.title)}</span>${!short && x.desc ? `<span class="nd">${esc(x.desc)}</span>` : ''}<span class="nm">${esc(x.source)} · ${esc(L.timeAgoRu(x.date))}${(ui.newsTopic === 'all' || short) && topicName(x.topic) ? ` · ${esc(topicName(x.topic))}` : ''}</span></a><button class="bm ${on ? 'on' : ''}" data-act="news-save" data-link="${esc(x.link)}" aria-label="${on ? 'Убрать из «На потом»' : 'Изучить позже'}">${on ? '★' : '☆'}</button></div>`;
 }
 function savedItem(x) {
-  return `<div class="newsrow ${x.done ? 'done' : ''}"><button class="chk ${x.done ? 'on' : ''}" data-act="saved-done" data-link="${esc(x.link)}" aria-label="Изучено"></button><a class="news" href="${esc(x.link)}" target="_blank" rel="noopener noreferrer"><span class="nt">${esc(x.title)}</span>${x.desc ? `<span class="nd">${esc(x.desc)}</span>` : ''}<span class="nm">${esc(x.source)}${x.topic ? ' · ' + esc(topicName(x.topic)) : ''} · отложено ${esc(L.timeAgoRu(x.savedAt))}</span></a><button class="bm" data-act="saved-del" data-link="${esc(x.link)}" aria-label="Удалить">✕</button></div>`;
+  return `<div class="newsrow ${x.done ? 'done' : ''}"><button class="chk ${x.done ? 'on' : ''}" data-act="saved-done" data-link="${esc(x.link)}" aria-label="Изучено"></button><a class="news" href="${esc(x.link)}" target="_blank" rel="noopener noreferrer"><span class="nt">${esc(x.title)}</span>${x.desc ? `<span class="nd">${esc(x.desc)}</span>` : ''}<span class="nm">${esc(x.source)}${topicName(x.topic) ? ' · ' + esc(topicName(x.topic)) : ''} · отложено ${esc(L.timeAgoRu(x.savedAt))}</span></a><button class="bm" data-act="saved-del" data-link="${esc(x.link)}" aria-label="Удалить">✕</button></div>`;
 }
 function savedView() {
   const l = L.sortSavedNews(S.savedNews), left = l.filter((x) => !x.done).length;

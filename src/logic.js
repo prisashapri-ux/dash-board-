@@ -331,9 +331,9 @@ export function formatRate(n) { return Number(n).toFixed(2).replace('.', ','); }
 
 /* ---------- Новости ---------- */
 // Ленты собирает GitHub Actions (scripts/fetch-news.mjs) в data/news.json на сайте Пульта.
-export const NEWS_TOPICS = [['ai', 'ИИ и Claude'], ['github', 'GitHub: ИИ'], ['aianim', 'ИИ-анимация'], ['print3d', '3D-печать и ИИ'], ['russia', 'Россия'], ['sochi', 'Сочи'], ['tech', 'Технологии'], ['games', 'Игры'], ['creators', 'Блогеры']];
+export const NEWS_TOPICS = [['ai', 'ИИ и Claude'], ['github', 'GitHub: ИИ'], ['aianim', 'ИИ-анимация'], ['print3d', '3D-печать и ИИ'], ['sochi', 'Сочи'], ['tech', 'Технологии'], ['games', 'Игры']];
 /** Сколько часов держать новость темы (по умолчанию 48): у редких тем окно шире. */
-export const NEWS_MAX_AGE_H = { github: 7 * 24, aianim: 7 * 24, print3d: 7 * 24 };
+export const NEWS_MAX_AGE_H = { github: 7 * 24, aianim: 7 * 24, print3d: 7 * 24, games: 3 * 24 };
 const gnews = (q) => `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=ru&gl=RU&ceid=RU:ru`;
 const gnewsEn = (q) => `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en-US&gl=US&ceid=US:en`;
 // google: заголовок «Текст - Источник»; yt: YouTube-канал по @имени (ID канала ищется при сборке);
@@ -352,18 +352,17 @@ export const NEWS_FEEDS = [
   { topic: 'aianim', source: 'Google News', url: gnewsEn('"AI animation" OR "AI video generator" when:3d'), google: true },
   { topic: 'print3d', source: 'Google Новости', url: gnews('3D-печать нейросеть OR ИИ when:7d'), google: true },
   { topic: 'print3d', source: 'Google News', url: gnewsEn('"3D printing" AI when:7d'), google: true },
-  { topic: 'russia', source: 'Лента.ру', url: 'https://lenta.ru/rss/news' },
-  { topic: 'russia', source: 'РБК', url: 'https://rssexport.rbc.ru/rbcnews/news/30/full.rss' },
-  { topic: 'russia', source: 'ТАСС', url: 'https://tass.ru/rss/v2.xml' },
-  { topic: 'russia', source: 'Интерфакс', url: 'https://www.interfax.ru/rss.asp' },
   { topic: 'sochi', source: 'Google Новости', url: gnews('Сочи when:2d'), google: true },
   { topic: 'tech', source: 'Хабр', url: 'https://habr.com/ru/rss/news/?fl=ru' },
   { topic: 'tech', source: '3DNews', url: 'https://3dnews.ru/news/rss/' },
   { topic: 'tech', source: 'iXBT', url: 'https://www.ixbt.com/export/news.rss' },
-  { topic: 'games', source: 'StopGame', url: 'https://stopgame.ru/rss/rss_news.xml' },
-  { topic: 'games', source: 'DTF', url: 'https://dtf.ru/rss/all' },
+  // Игры: то, во что сейчас играют стримеры и что смотрят на YouTube и Twitch, плюс Dota 2 для игрового канала.
+  { topic: 'games', source: 'Google Новости', url: gnews('Twitch стримеры игра when:3d'), google: true },
+  { topic: 'games', source: 'Google Новости', url: gnews('"популярные игры" OR "топ игр" Twitch OR YouTube OR Steam when:7d'), google: true },
+  { topic: 'games', source: 'Google News', url: gnewsEn('Twitch "most watched" games when:7d'), google: true },
+  { topic: 'games', source: 'Google News', url: gnewsEn('streamers "viral" OR "trending" game Twitch when:3d'), google: true },
+  { topic: 'games', source: 'Google News', url: gnewsEn('Steam "concurrent players" record when:7d'), google: true },
   { topic: 'games', source: 'Google Новости', url: gnews('Dota 2 when:2d'), google: true },
-  { topic: 'creators', source: 'Google Новости', url: gnews('YouTube OR Twitch блогеры when:2d'), google: true },
   { topic: 'aianim', source: 'Cartoon Brew', url: 'https://www.cartoonbrew.com/feed' },
 ];
 
