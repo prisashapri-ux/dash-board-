@@ -15,12 +15,12 @@ function defaults() {
     finance: { entries: [], budget: 0 },
     settings: { ...L.DEFAULT_SETTINGS },
     projects: [], remote: { updated: null, projects: [] }, weather: null, claude: null,
-    goals: [], countdowns: [], journal: {}, shopping: [], menu: ['', '', '', '', '', '', ''], rates: null,
+    goals: [], countdowns: [], journal: {}, shopping: [], menu: ['', '', '', '', '', '', ''], rates: null, news: null,
     routines: { morning: L.DEFAULT_ROUTINES.morning.map((title, i) => ({ id: 'rm' + (i + 1), title })), evening: L.DEFAULT_ROUTINES.evening.map((title, i) => ({ id: 're' + (i + 1), title })), checks: {} },
   };
 }
 let S = defaults();
-const ui = { tab: 'home', more: 'habits', noteQuery: '', modal: null, addDate: null, habitEdit: false, routineEdit: false, cityResults: null, wxState: '', lastKey: '', photos: [], ambient: false, lastTouch: Date.now() };
+const ui = { newsTopic: 'all', nwState: '', tab: 'home', more: 'habits', noteQuery: '', modal: null, addDate: null, habitEdit: false, routineEdit: false, cityResults: null, wxState: '', lastKey: '', photos: [], ambient: false, lastTouch: Date.now() };
 
 function normalize(raw) {
   const d = defaults();
@@ -30,7 +30,7 @@ function normalize(raw) {
     tasks: Array.isArray(r.tasks) ? r.tasks : [], notes: Array.isArray(r.notes) ? r.notes : [],
     habits: { list: Array.isArray(r.habits?.list) ? r.habits.list : d.habits.list, checks: r.habits?.checks || {} },
     finance: { entries: Array.isArray(r.finance?.entries) ? r.finance.entries : [], budget: Number(r.finance?.budget) || 0 },
-    settings: { ...d.settings, ...(r.settings || {}) },
+    settings: { ...d.settings, ...(r.settings || {}), newsHidden: Array.isArray(r.settings?.newsHidden) ? r.settings.newsHidden : [] },
     projects: Array.isArray(r.projects) ? r.projects : [],
     remote: r.remote?.projects ? r.remote : d.remote,
     goals: Array.isArray(r.goals) ? r.goals : [], countdowns: Array.isArray(r.countdowns) ? r.countdowns : [],
@@ -112,7 +112,7 @@ function homeView() {
   let out = `<div class="grid2"><section class="card"><div class="clock" id="clock">${L.formatTime(now)}</div><div class="date" id="date">${esc(L.formatDateRu(now))}</div><div class="muted tiny" style="margin-top:8px">Режим: ${{ morning: 'утро', day: 'день', evening: 'вечер' }[m]}${S.settings.mode === 'auto' ? ' (по времени)' : ' (вручную)'}</div></section>${weatherCard()}</div><div class="seg">${seg}</div>${claudeCard()}`;
   const todayCard = `<section class="card"><h2>Сегодня</h2>${g.overdue.length ? `<div class="chip bad">Просрочено: ${g.overdue.length}</div>${taskList(g.overdue)}` : ''}${taskList(g.today)}${quickTask(today, '+ задача на сегодня')}</section>`;
   out = reviewCard() + out;
-  if (m === 'morning') out += `<div class="grid2">${todayCard}${projectsNext()}</div><div class="grid2">${routineCard('morning')}${timeCard()}</div>`;
+  if (m === 'morning') out += `<div class="grid2">${todayCard}${projectsNext()}</div><div class="grid2">${routineCard('morning')}${timeCard()}</div>${newsCard()}`;
   else if (m === 'day') out += `<div class="grid2">${todayCard}${projectsSummary()}</div><div class="grid2">${timeCard()}${ratesCard(true)}</div>`;
   else {
     const s = L.daySummary({ tasks: S.tasks, habits: S.habits.list, checks: S.habits.checks, entries: S.finance.entries, today, monthlyBudget: S.finance.budget });
@@ -162,6 +162,29 @@ function ratesCard(compact) {
   const body = r ? r.list.map((x) => `<div class="kv"><span>${{ USD: '$ Доллар', EUR: '€ Евро', CNY: '¥ Юань' }[x.code]}</span><span><b>${L.formatRate(x.value)} ₽</b> <span class="${x.diff > 0 ? 'badt' : x.diff < 0 ? 'okt' : 'muted'} tiny">${x.diff > 0 ? '▲' : x.diff < 0 ? '▼' : ''}${x.diff ? L.formatRate(Math.abs(x.diff)) : '0'}</span></span></div>`).join('') + `<div class="muted tiny">Курс ЦБ на ${esc(L.formatShortRu(r.date || todayISO()))}${ui.rtState === 'fail' ? ' · сейчас нет сети' : ''}</div>`
     : `<p class="muted">${ui.rtState === 'fail' ? 'Не удалось загрузить курсы.' : 'Загружаю…'}</p>`;
   return `<section class="card"><div class="row space"><h2>${compact ? 'Курсы ЦБ' : 'Курсы валют'}</h2><button class="btn small ghost" data-act="rates-refresh">Обновить</button></div>${body}</section>`;
+}
+
+/* ---------- Новости ---------- */
+const topicName = (k) => (L.NEWS_TOPICS.find((t) => t[0] === k) || [k, k])[1];
+function newsItem(x, short) {
+  return `<a class="news" href="${esc(x.link)}" target="_blank" rel="noopener noreferrer"><span class="nt">${esc(x.title)}</span>${!short && x.desc ? `<span class="nd">${esc(x.desc)}</span>` : ''}<span class="nm">${esc(x.source)} · ${esc(L.timeAgoRu(x.date))}${ui.newsTopic === 'all' || short ? ` · ${esc(topicName(x.topic))}` : ''}</span></a>`;
+}
+function newsStatus() {
+  const n = S.news;
+  if (!n) return ui.nwState === 'fail' ? 'Не удалось загрузить новости. Проверь интернет.' : 'Загружаю…';
+  return `Собраны ${esc(L.timeAgoRu(n.fetchedAt || new Date(n.at).toISOString()))}${ui.nwState === 'fail' ? ' · сейчас нет сети' : ''}`;
+}
+function newsCard() {
+  const list = L.newsFor(S.news && S.news.items, 'all', S.settings.newsHidden).slice(0, 5);
+  return `<section class="card"><div class="row space"><h2>Новости</h2><button class="btn small ghost" data-act="go-news">Все новости</button></div>${list.length ? list.map((x) => newsItem(x, true)).join('') : `<p class="muted">${newsStatus()}</p>`}</section>`;
+}
+function newsView() {
+  const hidden = S.settings.newsHidden, topics = [['all', 'Все'], ...L.NEWS_TOPICS];
+  const list = L.newsFor(S.news && S.news.items, ui.newsTopic, hidden);
+  return `<div class="seg wrap">${topics.map(([k, t]) => `<button class="${ui.newsTopic === k ? 'on' : ''}" data-act="news-topic" data-k="${k}">${t}</button>`).join('')}</div>
+<section class="card"><div class="row space"><span class="muted tiny">${newsStatus()}</span><button class="btn small ghost" data-act="news-refresh">Обновить</button></div>
+${list.length ? list.map((x) => newsItem(x, false)).join('') : S.news ? '<div class="empty">В этой теме пока нет свежих новостей.</div>' : ''}</section>
+<section class="card"><h2>Темы во вкладке «Все»</h2><p class="muted tiny">Нажми, чтобы скрыть тему из общей ленты и с главной. Отдельной кнопкой она остаётся.</p><div class="row wrap gap">${L.NEWS_TOPICS.map(([k, t]) => `<button class="btn small ${hidden.includes(k) ? '' : 'primary'}" data-act="news-hide" data-k="${k}">${hidden.includes(k) ? '' : '✓ '}${t}</button>`).join('')}</div></section>`;
 }
 
 /* ---------- Проекты ---------- */
@@ -384,8 +407,8 @@ function importBackup(file) {
 }
 
 /* ---------- Отрисовка ---------- */
-const TABS = [['home', '🏠', 'Главная'], ['projects', '📁', 'Проекты'], ['tasks', '✅', 'Задачи'], ['notes', '📝', 'Заметки'], ['more', '⋯', 'Ещё']];
-const VIEWS = { home: homeView, projects: projectsView, tasks: tasksView, notes: notesView, more: moreView };
+const TABS = [['home', '🏠', 'Главная'], ['projects', '📁', 'Проекты'], ['tasks', '✅', 'Задачи'], ['notes', '📝', 'Заметки'], ['news', '📰', 'Новости'], ['more', '⋯', 'Ещё']];
+const VIEWS = { home: homeView, projects: projectsView, tasks: tasksView, notes: notesView, news: newsView, more: moreView };
 function renderTabs() {
   $('#tabs').innerHTML = TABS.map(([k, ic, t]) => `<button class="${ui.tab === k ? 'on' : ''}" data-tab="${k}"><span class="ic">${ic}</span>${t}</button>`).join('');
 }
@@ -512,6 +535,17 @@ async function loadWeather(force) {
   } catch (e) { ui.wxState = 'fail'; ui.wxError = (e && e.message) || ''; }
   if (ui.tab === 'home') render();
 }
+async function loadNews(force) {
+  if (!force && S.news && Date.now() - S.news.at < 20 * 60000) return;
+  ui.nwState = 'loading';
+  try {
+    const d = L.parseSiteNews(await getJson('./data/news.json?t=' + Math.floor(Date.now() / 60000)));
+    if (!d) throw new Error('формат');
+    S.news = { at: Date.now(), fetchedAt: d.fetchedAt, items: d.items }; ui.nwState = 'ok'; save();
+    if (force) toast('Новости обновлены');
+  } catch { ui.nwState = 'fail'; if (force) toast('Не удалось обновить новости'); }
+  if ((ui.tab === 'news' || ui.tab === 'home') && !ui.modal && !document.activeElement?.matches?.('input, textarea, select')) render();
+}
 async function loadRates(force) {
   if (!force && S.rates && Date.now() - S.rates.at < 6 * 3600000) return;
   try {
@@ -569,6 +603,10 @@ const ACTS = {
   'city-pick': (d) => { const c = ui.cityResults?.[Number(d.i)]; if (!c) return; Object.assign(S.settings, { city: c.name, lat: c.latitude, lon: c.longitude }); ui.cityResults = null; S.weather = null; save(); render(); loadWeather(true); toast('Город: ' + c.name); },
   'export-copy': copyBackup,
   'rates-refresh': () => loadRates(true),
+  'news-refresh': () => loadNews(true),
+  'news-topic': (d) => { ui.newsTopic = d.k; render(); window.scrollTo(0, 0); },
+  'news-hide': (d) => { const h = S.settings.newsHidden; S.settings.newsHidden = h.includes(d.k) ? h.filter((x) => x !== d.k) : [...h, d.k]; save(); render(); },
+  'go-news': () => { ui.tab = 'news'; ui.modal = null; render(); window.scrollTo(0, 0); loadNews(false); },
   'go-more': (d) => { ui.tab = 'more'; ui.more = d.k; render(); window.scrollTo(0, 0); },
   'goal-toggle': (d) => { const g = byId(S.goals, d.id); if (g) { g.status = g.status === 'done' ? null : 'done'; save(); render(); } },
   'goal-status': (d) => { const g = byId(S.goals, d.id); if (g) { g.status = d.s; save(); render(); } },
@@ -624,7 +662,7 @@ document.addEventListener('click', (e) => {
   if (ui.ambient) { hideAmbient(); return; }
   if (e.target.id === 'modal') { ui.modal = null; render(); return; }
   const tab = e.target.closest('[data-tab]');
-  if (tab) { if (ui.rec && tab.dataset.tab !== 'notes') ui.rec.finishSoon(); ui.tab = tab.dataset.tab; ui.modal = null; render(); window.scrollTo(0, 0); return; }
+  if (tab) { if (ui.rec && tab.dataset.tab !== 'notes') ui.rec.finishSoon(); ui.tab = tab.dataset.tab; ui.modal = null; render(); if (ui.tab === 'news') loadNews(false); window.scrollTo(0, 0); return; }
   const a = e.target.closest('[data-act]');
   if (a && ACTS[a.dataset.act]) ACTS[a.dataset.act](a.dataset);
 });
@@ -700,7 +738,7 @@ async function boot() {
   window.__pultBooted = true;
   persist();
   setInterval(tick, 15000);
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { ui.lastTouch = Date.now(); tick(); loadWeather(false); loadClaude(); loadRates(false); } });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { ui.lastTouch = Date.now(); tick(); loadWeather(false); loadClaude(); loadRates(false); loadNews(false); } });
   setInterval(() => { if (document.visibilityState === 'visible') loadWeather(false); }, 15 * 60000);
   setInterval(() => { if (document.visibilityState === 'visible') loadClaude(); }, 120000);
   setupUpdates();
@@ -708,5 +746,7 @@ async function boot() {
   loadWeather(false);
   loadClaude();
   loadRates(false);
+  loadNews(false);
+  setInterval(() => { if (document.visibilityState === 'visible') loadNews(false); }, 30 * 60000);
 }
 boot().catch((e) => { console.error(e); window.__pultFail?.(); });

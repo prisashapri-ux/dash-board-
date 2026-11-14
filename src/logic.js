@@ -328,3 +328,45 @@ export function parseRates(j) {
   return list.length ? { date: String(j.Date || '').slice(0, 10), list } : null;
 }
 export function formatRate(n) { return Number(n).toFixed(2).replace('.', ','); }
+
+/* ---------- Новости ---------- */
+// Ленты собирает GitHub Actions (scripts/fetch-news.mjs) в data/news.json на сайте Пульта.
+export const NEWS_TOPICS = [['russia', 'Россия'], ['sochi', 'Сочи'], ['tech', 'Технологии'], ['games', 'Игры'], ['creators', 'Блогеры и анимация']];
+const gnews = (q) => `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=ru&gl=RU&ceid=RU:ru`;
+export const NEWS_FEEDS = [
+  { topic: 'russia', source: 'Лента.ру', url: 'https://lenta.ru/rss/news' },
+  { topic: 'russia', source: 'РБК', url: 'https://rssexport.rbc.ru/rbcnews/news/30/full.rss' },
+  { topic: 'russia', source: 'ТАСС', url: 'https://tass.ru/rss/v2.xml' },
+  { topic: 'russia', source: 'Интерфакс', url: 'https://www.interfax.ru/rss.asp' },
+  { topic: 'sochi', source: 'Google Новости', url: gnews('Сочи when:2d'), google: true },
+  { topic: 'tech', source: 'Хабр', url: 'https://habr.com/ru/rss/news/?fl=ru' },
+  { topic: 'tech', source: '3DNews', url: 'https://3dnews.ru/news/rss/' },
+  { topic: 'tech', source: 'iXBT', url: 'https://www.ixbt.com/export/news.rss' },
+  { topic: 'games', source: 'StopGame', url: 'https://stopgame.ru/rss/rss_news.xml' },
+  { topic: 'games', source: 'DTF', url: 'https://dtf.ru/rss/all' },
+  { topic: 'games', source: 'Google Новости', url: gnews('Dota 2 when:2d'), google: true },
+  { topic: 'creators', source: 'Google Новости', url: gnews('YouTube OR Twitch блогеры when:2d'), google: true },
+  { topic: 'creators', source: 'Cartoon Brew', url: 'https://www.cartoonbrew.com/feed' },
+];
+
+/** Проверка news.json с сайта: только список с заголовком и ссылкой http(s). */
+export function parseSiteNews(j) {
+  if (!j || !Array.isArray(j.items)) return null;
+  const items = j.items.filter((x) => x && typeof x.title === 'string' && /^https?:\/\//.test(x.link || '') && typeof x.topic === 'string');
+  return items.length ? { fetchedAt: j.fetchedAt || null, items } : null;
+}
+/** Новости выбранной темы ('all' — все, кроме скрытых тем). */
+export function newsFor(items, topic, hidden = []) {
+  return (items || []).filter((x) => (topic === 'all' ? !hidden.includes(x.topic) : x.topic === topic));
+}
+/** «5 мин назад», «3 ч назад», «вчера», «12 ноя». */
+export function timeAgoRu(iso, now = Date.now()) {
+  const t = Date.parse(iso); if (!Number.isFinite(t)) return '';
+  const min = Math.max(0, Math.floor((now - t) / 60000));
+  if (min < 1) return 'только что';
+  if (min < 60) return `${min} мин назад`;
+  if (min < 24 * 60) return `${Math.floor(min / 60)} ч назад`;
+  const d = new Date(t), y = new Date(now); y.setDate(y.getDate() - 1);
+  if (isoDate(d) === isoDate(y)) return 'вчера';
+  return formatShortRu(isoDate(d));
+}

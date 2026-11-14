@@ -203,3 +203,12 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px;
 @media (max-width: 700px) { .seg.stages button { font-size: 13px; } .psheet { border-radius: 0; } .datebtn.small span { font-size: 13px; } }
 .btn.mic { font-weight: 600; }
 .btn.mic.rec { background: var(--bad); border-color: var(--bad); color: var(--on-accent); }
+
+/* Новости */
+.news { display: block; padding: 10px 0; min-height: 44px; border-bottom: 1px solid var(--line); color: var(--text); text-decoration: none; }
+.news:last-child { border-bottom: 0; }
+.news .nt { display: block; font-size: 17px; line-height: 1.35; font-weight: 500; overflow-wrap: anywhere; word-wrap: break-word; }
+.news .nd { display: block; color: var(--muted); font-size: 15px; margin-top: 4px; }
+.news .nm { display: block; color: var(--muted); font-size: 13px; margin-top: 4px; }
+.news:active { background: var(--card2); }
+.row.wrap.gap > * { margin-bottom: 8px; }
