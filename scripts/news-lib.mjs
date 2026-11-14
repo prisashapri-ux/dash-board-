@@ -59,9 +59,9 @@ const norm = (s) => s.toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]
  * Собирает итоговый список: свежие (не старше maxAgeH), без повторов по заголовку, новые сверху,
  * не больше perTopic на тему. items: [{ topic, source, title, link, date, desc }].
  */
-export function buildNews(items, now = Date.now(), { maxAgeH = 48, perTopic = 30 } = {}) {
+export function buildNews(items, now = Date.now(), { maxAgeH = 48, perTopic = 30, ageByTopic = {} } = {}) {
   const seen = new Set(), count = {}, out = [];
-  const fresh = items.filter((x) => x.date && now - Date.parse(x.date) < maxAgeH * 3600000 && Date.parse(x.date) < now + 3600000)
+  const fresh = items.filter((x) => x.date && now - Date.parse(x.date) < (ageByTopic[x.topic] || maxAgeH) * 3600000 && Date.parse(x.date) < now + 3600000)
     .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
   for (const x of fresh) {
     const k = x.topic + '|' + norm(x.title);
@@ -69,4 +69,18 @@ export function buildNews(items, now = Date.now(), { maxAgeH = 48, perTopic = 30
     seen.add(k); count[x.topic] = (count[x.topic] || 0) + 1; out.push(x);
   }
   return out;
+}
+
+/** Новые репозитории из ответа GitHub Search API. */
+export function githubRepos(j) {
+  return (j && Array.isArray(j.items) ? j.items : []).filter((r) => r && r.full_name && /^https:\/\/github\.com\//.test(r.html_url || '')).map((r) => ({
+    title: `${r.full_name} · ★ ${Number(r.stargazers_count || 0).toLocaleString('ru-RU')}`,
+    link: r.html_url, date: r.created_at || '',
+    desc: cleanText([r.description || '', r.language ? `(${r.language})` : ''].join(' '), 220),
+  }));
+}
+/** ID YouTube-канала со страницы канала. */
+export function youtubeChannelId(html) {
+  const m = String(html).match(/<link rel="canonical" href="https:\/\/www\.youtube\.com\/channel\/(UC[\w-]{22})"/) || String(html).match(/"(?:externalId|channelId)":"(UC[\w-]{22})"/);
+  return m ? m[1] : null;
 }

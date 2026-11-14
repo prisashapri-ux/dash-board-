@@ -58,5 +58,21 @@ test('время по-русски', () => {
 });
 test('у каждой ленты есть тема из списка и https', () => {
   const keys = L.NEWS_TOPICS.map((t) => t[0]);
-  for (const f of L.NEWS_FEEDS) { assert.ok(keys.includes(f.topic), f.source); assert.match(f.url, /^https:\/\//); }
+  for (const f of L.NEWS_FEEDS) { assert.ok(keys.includes(f.topic), f.source); assert.ok(f.github || /^@/.test(f.yt || '') || /^https:\/\//.test(f.url), f.source); }
+});
+test('GitHub: новые репозитории в виде новостей', () => {
+  const r = N.githubRepos({ items: [{ full_name: 'a/b', html_url: 'https://github.com/a/b', stargazers_count: 1234, created_at: '2026-11-10T00:00:00Z', description: 'Агент для Claude', language: 'Python' }, { full_name: 'x/y', html_url: 'http://evil' }] });
+  assert.equal(r.length, 1);
+  assert.equal(r[0].link, 'https://github.com/a/b');
+  assert.match(r[0].title, /^a\/b · ★ 1\s234$/);
+  assert.equal(r[0].desc, 'Агент для Claude (Python)');
+});
+test('YouTube: ID канала со страницы', () => {
+  assert.equal(N.youtubeChannelId('<link rel="canonical" href="https://www.youtube.com/channel/UClnFtyUEaxQOCd1s5NKYGFA">'), 'UClnFtyUEaxQOCd1s5NKYGFA');
+  assert.equal(N.youtubeChannelId('нет'), null);
+});
+test('у редких тем окно свежести шире', () => {
+  const now = Date.parse('2026-11-14T08:00:00Z'), d = new Date(now - 5 * 86400000).toISOString();
+  const r = N.buildNews([{ topic: 'github', title: 'g', link: 'https://x', date: d }, { topic: 'tech', title: 't', link: 'https://x', date: d }], now, { ageByTopic: L.NEWS_MAX_AGE_H });
+  assert.deepEqual(r.map((x) => x.topic), ['github']);
 });

@@ -331,9 +331,28 @@ export function formatRate(n) { return Number(n).toFixed(2).replace('.', ','); }
 
 /* ---------- Новости ---------- */
 // Ленты собирает GitHub Actions (scripts/fetch-news.mjs) в data/news.json на сайте Пульта.
-export const NEWS_TOPICS = [['russia', 'Россия'], ['sochi', 'Сочи'], ['tech', 'Технологии'], ['games', 'Игры'], ['creators', 'Блогеры и анимация']];
+export const NEWS_TOPICS = [['ai', 'ИИ и Claude'], ['github', 'GitHub: ИИ'], ['aianim', 'ИИ-анимация'], ['print3d', '3D-печать и ИИ'], ['russia', 'Россия'], ['sochi', 'Сочи'], ['tech', 'Технологии'], ['games', 'Игры'], ['creators', 'Блогеры']];
+/** Сколько часов держать новость темы (по умолчанию 48): у редких тем окно шире. */
+export const NEWS_MAX_AGE_H = { github: 7 * 24, aianim: 7 * 24, print3d: 7 * 24 };
 const gnews = (q) => `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=ru&gl=RU&ceid=RU:ru`;
+const gnewsEn = (q) => `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en-US&gl=US&ceid=US:en`;
+// google: заголовок «Текст - Источник»; yt: YouTube-канал по @имени (ID канала ищется при сборке);
+// github: поиск новых репозиториев на GitHub за неделю, по звёздам.
 export const NEWS_FEEDS = [
+  { topic: 'ai', source: 'Google Новости', url: gnews('Claude OR Anthropic when:2d'), google: true },
+  { topic: 'ai', source: 'Google News', url: gnewsEn('Claude Anthropic when:2d'), google: true },
+  { topic: 'ai', source: 'Google Новости', url: gnews('нейросеть OR "искусственный интеллект" when:1d'), google: true },
+  { topic: 'ai', source: 'Хабр: ИИ', url: 'https://habr.com/ru/rss/hubs/artificial_intelligence/articles/?fl=ru' },
+  { topic: 'github', source: 'GitHub', github: 'llm OR ai OR agent OR claude OR mcp' },
+  { topic: 'github', source: 'GitHub', github: 'claude OR claude-code OR anthropic' },
+  { topic: 'github', source: 'GitHub Blog', url: 'https://github.blog/ai-and-ml/feed/' },
+  { topic: 'aianim', source: 'Curious Refuge', yt: '@curiousrefuge' },
+  { topic: 'aianim', source: 'Theoretically Media', yt: '@TheoreticallyMedia' },
+  { topic: 'aianim', source: 'MattVidPro AI', yt: '@MattVidProAI' },
+  { topic: 'aianim', source: 'Google Новости', url: gnews('ИИ анимация OR нейросеть мультфильм when:7d'), google: true },
+  { topic: 'aianim', source: 'Google News', url: gnewsEn('"AI animation" OR "AI video generator" when:3d'), google: true },
+  { topic: 'print3d', source: 'Google Новости', url: gnews('3D-печать нейросеть OR ИИ when:7d'), google: true },
+  { topic: 'print3d', source: 'Google News', url: gnewsEn('"3D printing" AI when:7d'), google: true },
   { topic: 'russia', source: 'Лента.ру', url: 'https://lenta.ru/rss/news' },
   { topic: 'russia', source: 'РБК', url: 'https://rssexport.rbc.ru/rbcnews/news/30/full.rss' },
   { topic: 'russia', source: 'ТАСС', url: 'https://tass.ru/rss/v2.xml' },
@@ -346,7 +365,7 @@ export const NEWS_FEEDS = [
   { topic: 'games', source: 'DTF', url: 'https://dtf.ru/rss/all' },
   { topic: 'games', source: 'Google Новости', url: gnews('Dota 2 when:2d'), google: true },
   { topic: 'creators', source: 'Google Новости', url: gnews('YouTube OR Twitch блогеры when:2d'), google: true },
-  { topic: 'creators', source: 'Cartoon Brew', url: 'https://www.cartoonbrew.com/feed' },
+  { topic: 'aianim', source: 'Cartoon Brew', url: 'https://www.cartoonbrew.com/feed' },
 ];
 
 /** Проверка news.json с сайта: только список с заголовком и ссылкой http(s). */
