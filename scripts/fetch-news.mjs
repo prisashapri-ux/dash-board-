@@ -3,7 +3,7 @@
 // Список лент: NEWS_FEEDS в src/logic.js. Ленты, которые не ответили, просто пропускаются.
 import fs from 'node:fs';
 import path from 'node:path';
-import { NEWS_FEEDS, NEWS_MAX_AGE_H } from '../src/logic.js';
+import { NEWS_FEEDS, NEWS_MAX_AGE_H, NEWS_SKIP } from '../src/logic.js';
 import { parseFeed, decodeFeed, splitGoogleTitle, buildNews, githubRepos, youtubeChannelId } from './news-lib.mjs';
 
 const root = path.dirname(path.dirname(new URL(import.meta.url).pathname));
@@ -34,7 +34,7 @@ async function load(feed) {
   if (!r.ok) throw new Error('http ' + r.status);
   const items = parseFeed(decodeFeed(new Uint8Array(await r.arrayBuffer()), r.headers.get('content-type')));
   if (!items.length) throw new Error('пустая лента');
-  return items.slice(0, 25).map((x) => {
+  return items.filter((x) => !NEWS_SKIP.test(x.title)).slice(0, feed.limit || 25).map((x) => {
     let { title } = x, source = feed.source;
     if (feed.google) { const g = splitGoogleTitle(title); title = g.title; source = g.source || source; }
     return { topic: feed.topic, source, title, link: x.link, date: x.date, desc: feed.google ? '' : x.desc };

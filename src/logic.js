@@ -332,6 +332,8 @@ export function formatRate(n) { return Number(n).toFixed(2).replace('.', ','); }
 /* ---------- Новости ---------- */
 // Ленты собирает GitHub Actions (scripts/fetch-news.mjs) в data/news.json на сайте Пульта.
 export const NEWS_TOPICS = [['ai', 'ИИ и Claude'], ['github', 'GitHub: ИИ'], ['aianim', 'ИИ-анимация'], ['print3d', '3D-печать и ИИ'], ['sochi', 'Сочи'], ['tech', 'Технологии'], ['games', 'Игры']];
+/** Заголовки, которые не показываем: ставки и прогнозы на матчи. */
+export const NEWS_SKIP = /прогноз|кэф|ставк|букмекер|betting|odds|prediction/i;
 /** Сколько часов держать новость темы (по умолчанию 48): у редких тем окно шире. */
 export const NEWS_MAX_AGE_H = { github: 7 * 24, aianim: 7 * 24, print3d: 7 * 24, games: 3 * 24 };
 const gnews = (q) => `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=ru&gl=RU&ceid=RU:ru`;
@@ -362,7 +364,7 @@ export const NEWS_FEEDS = [
   { topic: 'games', source: 'Google News', url: gnewsEn('Twitch "most watched" games when:7d'), google: true },
   { topic: 'games', source: 'Google News', url: gnewsEn('streamers "viral" OR "trending" game Twitch when:3d'), google: true },
   { topic: 'games', source: 'Google News', url: gnewsEn('Steam "concurrent players" record when:7d'), google: true },
-  { topic: 'games', source: 'Google Новости', url: gnews('Dota 2 when:2d'), google: true },
+  { topic: 'games', source: 'Google Новости', url: gnews('Dota 2 when:2d'), google: true, limit: 8 },
   { topic: 'aianim', source: 'Cartoon Brew', url: 'https://www.cartoonbrew.com/feed' },
 ];
 

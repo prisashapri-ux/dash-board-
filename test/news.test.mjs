@@ -100,3 +100,7 @@ test('повторы: одна новость из разных лент и те
   ], now);
   assert.deepEqual(r.map((x) => x.link), ['https://a/1', 'https://c/3', 'https://e/5', 'https://e/6']);
 });
+test('ставки и прогнозы на матчи отсекаются', () => {
+  assert.ok(L.NEWS_SKIP.test('Xipto — Zero Tenacity: прогноз (кэф 1.52) на 14 ноября'));
+  assert.ok(!L.NEWS_SKIP.test('Valve выпустила патч для Dota 2'));
+});
