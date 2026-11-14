@@ -219,7 +219,7 @@ function dateBtn(attr, value, empty, cls = '') {
 function projectModal(p) {
   const done = p.tasks.filter((t) => t.done).length, today = todayISO();
   const tasks = [...p.tasks].sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0));
-  return `<div class="sheet psheet"><div class="sheet-head"><div class="grow"><h2>${esc(p.emoji)} ${esc(p.name)}</h2>${p.subtitle ? `<div class="muted">${esc(p.subtitle)}</div>` : ''}</div><button class="btn" data-act="close-modal">Готово</button></div>
+  return `<div class="sheet psheet"><div class="sheet-head"><button class="btn back" data-act="close-modal" aria-label="Назад">‹ Назад</button><div class="grow"><h2>${esc(p.emoji)} ${esc(p.name)}</h2>${p.subtitle ? `<div class="muted">${esc(p.subtitle)}</div>` : ''}</div><button class="btn" data-act="close-modal">Готово</button></div>
 <div class="sheet-body">
 <label class="lbl">Этап</label><div class="seg stages">${L.STAGES.map((s) => `<button class="${s === p.stage ? 'on' : ''}" data-act="p-stage" data-v="${esc(s)}">${esc(s)}</button>`).join('')}</div>
 <label class="lbl">Прогресс</label><div class="progrow"><button class="btn big-btn" data-act="p-prog" data-d="-10" aria-label="Меньше на 10">−</button><div class="grow"><div class="progval">${p.progress}%</div><div class="bar big"><span style="width:${p.progress}%"></span></div></div><button class="btn big-btn" data-act="p-prog" data-d="10" aria-label="Больше на 10">+</button></div>
@@ -688,6 +688,29 @@ document.addEventListener('click', (e) => {
   const a = e.target.closest('[data-act]');
   if (a && ACTS[a.dataset.act]) ACTS[a.dataset.act](a.dataset);
 });
+/* Закрыть окно: Esc на клавиатуре или свайп вниз, когда окно прокручено до верха. */
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && ui.modal) { ui.modal = null; render(); } });
+(() => {
+  const m = $('#modal'); let y0 = null, x0 = 0, dy = 0, sheet = null;
+  const reset = () => { if (sheet) { sheet.classList.remove('dragging'); sheet.style.transform = ''; sheet.style.webkitTransform = ''; } y0 = null; dy = 0; sheet = null; };
+  m.addEventListener('touchstart', (e) => {
+    reset();
+    if (e.touches.length !== 1 || m.scrollTop > 0 || e.target.closest('input, textarea, select, label.datebtn')) return;
+    y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; sheet = m.querySelector('.sheet');
+  }, { passive: true });
+  m.addEventListener('touchmove', (e) => {
+    if (y0 === null || !sheet) return;
+    const t = e.touches[0]; dy = t.clientY - y0;
+    if (m.scrollTop > 0 || dy < 0 || Math.abs(t.clientX - x0) > Math.abs(dy)) { if (dy < 0 || m.scrollTop > 0) reset(); return; }
+    const tr = `translateY(${Math.round(dy * 0.8)}px)`;
+    sheet.classList.add('dragging'); sheet.style.transform = tr; sheet.style.webkitTransform = tr;
+  }, { passive: true });
+  m.addEventListener('touchend', () => {
+    if (y0 !== null && dy > 110 && ui.modal) { reset(); ui.modal = null; render(); return; }
+    reset();
+  }, { passive: true });
+  m.addEventListener('touchcancel', reset, { passive: true });
+})();
 document.addEventListener('input', (e) => {
   const t = e.target;
   if (t.id === 'notesearch') { ui.noteQuery = t.value; $('#notelist').innerHTML = noteCards(); }

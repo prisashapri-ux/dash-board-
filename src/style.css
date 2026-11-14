@@ -99,9 +99,9 @@ label.lbl { display: block; font-size: 13px; color: var(--muted); margin: 8px 0 
 /* Модальное окно */
 #modal { position: fixed; left: 0; right: 0; top: 0; bottom: 0; z-index: 50; background: rgba(0,0,0,.65); overflow-y: auto; -webkit-overflow-scrolling: touch; }
 #modal[hidden], .toast[hidden] { display: none; }
-.sheet { max-width: 640px; margin: 4vh auto; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px; }
+.sheet { max-width: 640px; margin: 4vh auto; margin-top: calc(4vh + env(safe-area-inset-top, 0px)); background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px; }
 @media (max-width: 700px) {
-  .pgrid > * { max-width: none; } .sheet { margin: 0; border-radius: 0; min-height: 100%; border: 0; } }
+  .pgrid > * { max-width: none; } .sheet { margin: 0; border-radius: 0; min-height: 100%; border: 0; padding-top: calc(16px + env(safe-area-inset-top, 0px)); } }
 .toast { position: fixed; left: 50%; bottom: calc(76px + env(safe-area-inset-bottom)); -webkit-transform: translateX(-50%); transform: translateX(-50%); z-index: 60; background: var(--accent); color: var(--on-accent); padding: 10px 18px; border-radius: 12px; font-weight: 600; max-width: 90%; }
 
 /* Привычки */
@@ -175,10 +175,16 @@ body.night .amb-box { color: #8a3c32; }
 
 /* Окно проекта: крупное управление под палец */
 #modal { background: rgba(0,0,0,.8); }
-.psheet { max-width: 760px; padding: 0; overflow: hidden; }
-.sheet-head { display: -webkit-box; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; padding: 14px 16px; background: var(--card2); border-bottom: 1px solid var(--line); }
-.sheet-head h2 { margin: 0; font-size: 20px; }
-.sheet-head .btn { margin-left: 12px; font-weight: 600; }
+.sheet.psheet { max-width: 760px; padding: 0; }
+/* Шапка прилипает к верху при прокрутке и не залезает под часы и батарею (safe-area). */
+.sheet-head { position: -webkit-sticky; position: sticky; top: 0; z-index: 2; display: -webkit-box; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; padding: 10px 12px; background: var(--card2); border-bottom: 1px solid var(--line); border-radius: 18px 18px 0 0; }
+.sheet-head .grow { min-width: 0; }
+.sheet-head h2 { margin: 0; font-size: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet-head .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sheet-head .btn { margin-left: 10px; font-weight: 600; -webkit-flex: 0 0 auto; flex: 0 0 auto; }
+.sheet-head .back { margin: 0 10px 0 0; padding: 8px 14px 8px 10px; font-size: 17px; }
+.sheet { -webkit-transition: -webkit-transform .2s ease; transition: transform .2s ease; }
+.sheet.dragging { -webkit-transition: none; transition: none; }
 .sheet-body { padding: 4px 16px 16px; }
 .seg.stages { margin-bottom: 4px; }
 .seg.stages button { font-size: 15px; padding: 0 4px; }
@@ -200,7 +206,9 @@ body.night .amb-box { color: #8a3c32; }
 input[type=range] { height: 44px; }
 input[type=range]::-webkit-slider-runnable-track { height: 8px; border-radius: 4px; background: var(--line); }
 input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; margin-top: -10px; border-radius: 50%; background: var(--accent); }
-@media (max-width: 700px) { .seg.stages button { font-size: 13px; } .psheet { border-radius: 0; } .datebtn.small span { font-size: 13px; } }
+@media (max-width: 700px) { .seg.stages button { font-size: 13px; } .sheet.psheet { border-radius: 0; padding-top: 0; }
+  .sheet-head { border-radius: 0; padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
+  .sheet-head h2 { font-size: 18px; } .datebtn.small span { font-size: 13px; } }
 .btn.mic { font-weight: 600; }
 .btn.mic.rec { background: var(--bad); border-color: var(--bad); color: var(--on-accent); }
 
