@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { NEWS_FEEDS, NEWS_MAX_AGE_H, NEWS_SKIP } from '../src/logic.js';
-import { parseFeed, decodeFeed, splitGoogleTitle, buildNews, githubRepos, youtubeChannelId } from './news-lib.mjs';
+import { parseFeed, decodeFeed, splitGoogleTitle, buildNews, githubRepos, youtubeChannelId, translateItems, parseGtx } from './news-lib.mjs';
 
 const root = path.dirname(path.dirname(new URL(import.meta.url).pathname));
 const out = path.join(root, 'dist', 'data');
@@ -20,7 +20,7 @@ async function loadGithub(feed) {
   if (process.env.GITHUB_TOKEN) h.Authorization = 'Bearer ' + process.env.GITHUB_TOKEN;
   const items = githubRepos(await (await get(`https://api.github.com/search/repositories?q=${encodeURIComponent(q)}&sort=stars&order=desc&per_page=15`, h)).json());
   if (!items.length) throw new Error('пусто');
-  return items.map((x) => ({ topic: feed.topic, source: feed.source, ...x }));
+  return items.map((x) => ({ topic: feed.topic, source: feed.source, ...x, github: true }));
 }
 
 async function load(feed) {
@@ -48,9 +48,19 @@ results.forEach((r, i) => {
   if (r.status === 'fulfilled') { all.push(...r.value); status.push({ source: f.source, topic: f.topic, ok: true, n: r.value.length }); console.log(`✓ ${f.source} (${f.topic}): ${r.value.length}`); }
   else { status.push({ source: f.source, topic: f.topic, ok: false }); console.log(`✗ ${f.source} (${f.topic}): ${r.reason && r.reason.message}`); }
 });
-const items = buildNews(all, Date.now(), { ageByTopic: NEWS_MAX_AGE_H });
+// Английские заголовки и описания переводим на русский бесплатным переводчиком Google (без ключа).
+// Переводы прошлой сборки берём из news.json на самом сайте, чтобы не переводить одно и то же каждые 30 минут.
+const tr = async (text) => parseGtx(await (await get('https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ru&dt=t&q=' + encodeURIComponent(text))).json());
+let prevCache = {};
+const [owner, repo] = (process.env.GITHUB_REPOSITORY || '').split('/');
+if (owner && repo) { try { prevCache = (await (await get(`https://${owner}.github.io/${repo}/data/news.json?t=${Date.now()}`)).json()).translations || {}; } catch { /* первая сборка или сайт не ответил */ } }
+const opts = { ageByTopic: NEWS_MAX_AGE_H };
+const t = await translateItems(buildNews(all, Date.now(), opts), tr, prevCache);
+// Второй проход убирает повторы, которые стали видны после перевода (одна новость на русском и английском).
+const items = buildNews(t.items, Date.now(), opts).map(({ github, ...x }) => x);
+console.log(`перевод: ${t.items.filter((x) => x.translated).length} новостей, из кэша ${Object.keys(t.cache).filter((k) => prevCache[k]).length} текстов`);
 if (items.length) {
   fs.mkdirSync(out, { recursive: true });
-  fs.writeFileSync(path.join(out, 'news.json'), JSON.stringify({ fetchedAt: new Date().toISOString(), feeds: status, items }));
+  fs.writeFileSync(path.join(out, 'news.json'), JSON.stringify({ fetchedAt: new Date().toISOString(), feeds: status, items, translations: t.cache }));
   console.log(`news.json готов: ${items.length} новостей`);
 } else console.log('Новости собрать не удалось, news.json не записан');

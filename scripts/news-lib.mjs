@@ -97,3 +97,41 @@ export function youtubeChannelId(html) {
   const m = String(html).match(/<link rel="canonical" href="https:\/\/www\.youtube\.com\/channel\/(UC[\w-]{22})"/) || String(html).match(/"(?:externalId|channelId)":"(UC[\w-]{22})"/);
   return m ? m[1] : null;
 }
+
+/** Текст нужно переводить: есть латинские буквы и нет кириллицы. */
+export function needsTranslation(text) {
+  const t = String(text || '');
+  return /[a-z]{3}/i.test(t) && !/[а-яё]/i.test(t);
+}
+/** Ответ бесплатного переводчика Google (client=gtx): [[["перевод","оригинал",...],...],...]. */
+export function parseGtx(j) {
+  if (!Array.isArray(j) || !Array.isArray(j[0])) return '';
+  return j[0].map((x) => (Array.isArray(x) && typeof x[0] === 'string' ? x[0] : '')).join('').trim();
+}
+/**
+ * Переводит на русский заголовки и описания на английском. tr(text) возвращает перевод или бросает ошибку;
+ * cache — переводы прошлой сборки { оригинал: перевод }. Без перевода новость остаётся как была.
+ * Возвращает { items, cache } — новый кэш только с текстами текущих новостей.
+ */
+export async function translateItems(items, tr, cache = {}, { concurrency = 4 } = {}) {
+  const fresh = {}, todo = new Set();
+  for (const x of items) {
+    if (!x.github && needsTranslation(x.title)) todo.add(x.title);
+    if (needsTranslation(x.desc)) todo.add(x.desc);
+  }
+  const list = [...todo];
+  let i = 0;
+  const worker = async () => {
+    while (i < list.length) {
+      const t = list[i++];
+      if (cache[t]) { fresh[t] = cache[t]; continue; }
+      try { const r = await tr(t); if (r && !needsTranslation(r)) fresh[t] = r; } catch { /* оставим оригинал */ }
+    }
+  };
+  await Promise.all(Array.from({ length: concurrency }, worker));
+  const out = items.map((x) => {
+    const title = !x.github && fresh[x.title] ? fresh[x.title] : x.title, desc = fresh[x.desc] || x.desc;
+    return title !== x.title || desc !== x.desc ? { ...x, title, desc, translated: true } : x;
+  });
+  return { items: out, cache: fresh };
+}

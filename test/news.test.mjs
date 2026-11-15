@@ -104,3 +104,27 @@ test('ставки и прогнозы на матчи отсекаются', ()
   assert.ok(L.NEWS_SKIP.test('Xipto — Zero Tenacity: прогноз (кэф 1.52) на 14 ноября'));
   assert.ok(!L.NEWS_SKIP.test('Valve выпустила патч для Dota 2'));
 });
+test('перевод: только английские тексты, кэш, ошибки не ломают сборку', async () => {
+  assert.ok(N.needsTranslation('Claude gets a new model'));
+  assert.ok(!N.needsTranslation('Claude получил новую модель'));
+  assert.ok(!N.needsTranslation(''));
+  assert.equal(N.parseGtx([[['Привет, ', 'Hello, '], ['мир', 'world']]]), 'Привет, мир');
+  const asked = [];
+  const tr = async (t) => { asked.push(t); if (t === 'Broken text') throw new Error('429'); return 'перевод: ' + t.length; };
+  const items = [
+    { title: 'Claude gets a new model', desc: 'Short summary here', link: 'https://a' },
+    { title: 'Уже по-русски', desc: '', link: 'https://b' },
+    { title: 'owner/repo · ★ 50', desc: 'Agent framework', link: 'https://c', github: true },
+    { title: 'Broken text', desc: '', link: 'https://d' },
+  ];
+  const r = await N.translateItems(items, tr, { 'Short summary here': 'Краткое описание' });
+  assert.equal(r.items[0].title, 'перевод: 23');
+  assert.equal(r.items[0].desc, 'Краткое описание');
+  assert.equal(r.items[0].translated, true);
+  assert.equal(r.items[1].translated, undefined);
+  assert.equal(r.items[2].title, 'owner/repo · ★ 50');
+  assert.equal(r.items[2].desc, 'перевод: 15');
+  assert.equal(r.items[3].title, 'Broken text');
+  assert.ok(!asked.includes('Short summary here'));
+  assert.deepEqual(Object.keys(r.cache).sort(), ['Agent framework', 'Claude gets a new model', 'Short summary here']);
+});

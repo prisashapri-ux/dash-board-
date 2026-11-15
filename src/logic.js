@@ -393,7 +393,7 @@ export function timeAgoRu(iso, now = Date.now()) {
 export function toggleSavedNews(list, x, now = Date.now()) {
   const l = Array.isArray(list) ? list : [];
   if (l.some((s) => s.link === x.link)) return l.filter((s) => s.link !== x.link);
-  return [{ link: x.link, title: x.title, source: x.source || '', topic: x.topic || '', date: x.date || '', desc: x.desc || '', savedAt: new Date(now).toISOString(), done: false }, ...l];
+  return [{ link: x.link, title: x.title, source: x.source || '', topic: x.topic || '', date: x.date || '', desc: x.desc || '', translated: !!x.translated, savedAt: new Date(now).toISOString(), done: false }, ...l];
 }
 /** Список «На потом»: сначала неизученные (новые отметки сверху), изученные в конце. */
 export function sortSavedNews(list) {
