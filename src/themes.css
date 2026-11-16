@@ -57,6 +57,11 @@ body.theme-aurora:not(.night) .bar > span { background: -webkit-linear-gradient(
 body.theme-aurora .chk::before { border-radius: 50%; }
 body.theme-aurora:not(.night) .tabbar { background: #0c0e22; border-top-color: rgba(255,255,255,.1); }
 body.theme-aurora:not(.night) .tabbar button.on { color: #b9b0ff; }
+body.theme-aurora:not(.night) .cal td { background: rgba(255,255,255,.05); }
+body.theme-aurora:not(.night) .cal td.out { background: transparent; }
+body.theme-aurora:not(.night) .cal td.today { background: rgba(108,92,255,.32); }
+body.theme-aurora:not(.night) .cal td.today .cdn { color: #fff; }
+body.theme-aurora:not(.night) .cal td.today .ctk { background: rgba(255,255,255,.2); color: #fff; }
 body.theme-aurora:not(.night) .sheet { background: #12142a; }
 
 /* ================= 2. Бенто: светлый, яркие плитки, толстый контур и жёсткие тени ================= */
