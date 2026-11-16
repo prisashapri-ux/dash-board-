@@ -639,3 +639,80 @@ export function resetPipeline(pipe = {}, nowIso = new Date().toISOString()) {
   const had = (pipe.checks || []).length || (pipe.title || '').trim();
   return { title: '', checks: [], started: nowIso, log: had ? [{ title: (pipe.title || '').trim(), started: pipe.started || null, ended: nowIso }, ...log].slice(0, 50) : log };
 }
+
+/* ---------- Календарь (Google Календарь) ---------- */
+// Цвета событий Google Календаря по colorId; без цвета — цвет календаря.
+export const GCAL_COLORS = { 1: '#7986cb', 2: '#33b679', 3: '#8e24aa', 4: '#e67c73', 5: '#f6bf26', 6: '#f4511e', 7: '#039be5', 8: '#8a8a8a', 9: '#3f51b5', 10: '#0b8043', 11: '#d50000' };
+export const CAL_DEFAULT_COLOR = '#039be5', CAL_HOLIDAY_COLOR = '#7fcfa6';
+const CAL_DT = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;
+/**
+ * Событие из ответа Google Календаря → короткая запись для Пульта.
+ * Время берётся как есть из строки (часовой пояс календаря), без пересчёта.
+ * { t, d, d2, s, e, col, loc, hol }: d..d2 — дни события включительно, s/e — время ('' у событий на весь день).
+ */
+export function calEventFromGoogle(ev, holiday = false) {
+  if (!ev || ev.status === 'cancelled' || !ev.start || !ev.end) return null;
+  // В праздничном календаре Google бывает латинская «P» вместо русской «Р» («Pождество»).
+  const t = String(ev.summary || '').trim().replace(/^P(?=[а-яё])/, 'Р') || '(без названия)';
+  let d, d2, s = '', e = '';
+  if (ev.start.date) {
+    d = ev.start.date; d2 = ev.end.date ? addDays(ev.end.date, -1) : d;
+    if (d2 < d) d2 = d;
+  } else {
+    const a = String(ev.start.dateTime || '').match(CAL_DT), b = String(ev.end.dateTime || '').match(CAL_DT);
+    if (!a || !b) return null;
+    d = a[1]; s = a[2]; e = b[2]; d2 = b[1];
+    if (d2 > d && e === '00:00') { d2 = addDays(d2, -1); e = '24:00'; }
+    if (d2 < d) d2 = d;
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
+  const col = holiday ? CAL_HOLIDAY_COLOR : GCAL_COLORS[ev.colorId] || CAL_DEFAULT_COLOR;
+  const out = { t, d, d2, s, e, col };
+  if (ev.location) out.loc = String(ev.location).slice(0, 120);
+  if (holiday) out.hol = true;
+  return out;
+}
+/** Все календари → отсортированный список событий без повторов. */
+export function calEventsFromGoogle(calendars) {
+  const seen = new Set(), out = [];
+  for (const c of calendars || []) for (const ev of c.items || []) {
+    const x = calEventFromGoogle(ev, !!c.holiday);
+    if (!x) continue;
+    const k = [x.t, x.d, x.d2, x.s, x.e].join('|');
+    if (seen.has(k)) continue; seen.add(k); out.push(x);
+  }
+  return out.sort(calCmp);
+}
+function calCmp(a, b) { return a.d.localeCompare(b.d) || (!!b.hol - !!a.hol) || ((a.s ? 1 : 0) - (b.s ? 1 : 0)) || a.s.localeCompare(b.s) || a.t.localeCompare(b.t); }
+/** Расшифрованный data/calendar.json → { events } или null. */
+export function parseSiteCalendar(j) {
+  if (!j || !Array.isArray(j.events)) return null;
+  const re = /^\d{4}-\d{2}-\d{2}$/, tm = /^(\d{2}:\d{2})?$/;
+  const events = j.events.filter((x) => x && typeof x.t === 'string' && re.test(x.d) && re.test(x.d2) && tm.test(x.s || '') && /^(\d{2}:\d{2})?$/.test(x.e || ''))
+    .map((x) => ({ t: x.t, d: x.d, d2: x.d2, s: x.s || '', e: x.e || '', col: /^#[0-9a-f]{6}$/i.test(x.col) ? x.col : CAL_DEFAULT_COLOR, loc: x.loc || '', hol: !!x.hol }));
+  return { events: events.sort(calCmp), from: j.from || '', to: j.to || '' };
+}
+/** События дня: сначала праздники и «весь день», потом по времени начала. Для многодневных — время только в первый/последний день. */
+export function eventsOn(events, iso) {
+  return (events || []).filter((x) => x.d <= iso && iso <= x.d2).map((x) => {
+    if (x.d === x.d2 || !x.s) return x;
+    return { ...x, s: iso === x.d ? x.s : '00:00', e: iso === x.d2 ? x.e : '24:00', cont: iso !== x.d };
+  }).sort((a, b) => (!!b.hol - !!a.hol) || ((a.s ? 1 : 0) - (b.s ? 1 : 0)) || a.s.localeCompare(b.s) || a.t.localeCompare(b.t));
+}
+/** Время события для показа: «весь день», «14:00–20:00», «22:00–02:00». */
+export function eventTime(x) {
+  if (!x.s) return x.d !== x.d2 ? `${formatShortRu(x.d)} – ${formatShortRu(x.d2)}` : 'весь день';
+  return `${x.cont ? '…' : x.s}–${x.e === '24:00' ? '…' : x.e}`;
+}
+/** Сетка месяца с понедельника: массив недель по 7 дат ГГГГ-ММ-ДД (включая хвосты соседних месяцев). */
+export function monthGrid(y, m) {
+  const first = `${y}-${p2(m)}-01`, wd = (fromISO(first).getDay() + 6) % 7;
+  let cur = addDays(first, -wd);
+  const last = `${y}-${p2(m)}-${p2(new Date(y, m, 0).getDate())}`, weeks = [];
+  while (cur <= last) { const w = []; for (let i = 0; i < 7; i += 1) { w.push(cur); cur = addDays(cur, 1); } weeks.push(w); }
+  return weeks;
+}
+/** Ближайшие события начиная с момента now (дата и время 'ГГГГ-ММ-ДД', 'ЧЧ:ММ'): ещё не закончившиеся. */
+export function upcomingEvents(events, today, time, n = 5) {
+  return (events || []).filter((x) => !x.hol && (x.d2 > today || (x.d2 === today && (!x.e || x.e > time)))).slice(0, n);
+}

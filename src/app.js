@@ -15,12 +15,12 @@ function defaults() {
     finance: { entries: [], budget: 0 },
     settings: { ...L.DEFAULT_SETTINGS },
     projects: [], remote: { updated: null, projects: [] }, weather: null, claude: null,
-    goals: [], countdowns: [], journal: {}, shopping: [], menu: ['', '', '', '', '', '', ''], rates: null, news: null, savedNews: [], schedule: null, pipes: {},
+    goals: [], countdowns: [], journal: {}, shopping: [], menu: ['', '', '', '', '', '', ''], rates: null, news: null, savedNews: [], schedule: null, calendar: null, pipes: {},
     routines: { morning: L.DEFAULT_ROUTINES.morning.map((title, i) => ({ id: 'rm' + (i + 1), title })), evening: L.DEFAULT_ROUTINES.evening.map((title, i) => ({ id: 're' + (i + 1), title })), checks: {} },
   };
 }
 let S = defaults();
-const ui = { pipeOpen: [], schDay: '', newsTopic: 'all', nwState: '', tab: 'home', more: 'habits', noteQuery: '', noteProject: '', modal: null, addDate: null, habitEdit: false, routineEdit: false, cityResults: null, wxState: '', lastKey: '', photos: [], ambient: false, lastTouch: Date.now() };
+const ui = { pipeOpen: [], schDay: '', calDay: '', calMonth: '', newsTopic: 'all', nwState: '', tab: 'home', more: 'habits', noteQuery: '', noteProject: '', modal: null, addDate: null, habitEdit: false, routineEdit: false, cityResults: null, wxState: '', lastKey: '', photos: [], ambient: false, lastTouch: Date.now() };
 
 function normalize(raw) {
   const d = defaults();
@@ -146,7 +146,7 @@ function homeView() {
   const seg = ['auto', 'morning', 'day', 'evening'].map((k, i) => `<button class="${S.settings.mode === k ? 'on' : ''}" data-act="mode" data-mode="${k}">${['Авто', 'Утро', 'День', 'Вечер'][i]}</button>`).join('');
   let out = `<div class="grid2"><section class="card"><div class="clock" id="clock">${L.formatTime(now)}</div><div class="date" id="date">${esc(L.formatDateRu(now))}</div><div class="muted tiny" style="margin-top:8px">Режим: ${{ morning: 'утро', day: 'день', evening: 'вечер' }[m]}${S.settings.mode === 'auto' ? ' (по времени)' : ' (вручную)'}</div></section>${weatherCard()}</div><div class="seg">${seg}</div>${claudeCard()}`;
   const todayCard = `<section class="card"><h2>Сегодня</h2>${g.overdue.length ? `<div class="chip bad">Просрочено: ${g.overdue.length}</div>${taskList(g.overdue)}` : ''}${taskList(g.today)}${quickTask(today, '+ задача на сегодня')}</section>`;
-  out = reviewCard() + out + shiftCard();
+  out = reviewCard() + out + shiftCard() + calendarCard();
   if (m === 'morning') out += `<div class="grid2">${todayCard}${projectsNext()}</div><div class="grid2">${routineCard('morning')}${timeCard()}</div>${newsCard()}`;
   else if (m === 'day') out += `<div class="grid2">${todayCard}${projectsSummary()}</div><div class="grid2">${timeCard()}${ratesCard(true)}</div>`;
   else {
@@ -490,7 +490,7 @@ function monthTable(sch, key, sel) {
 <div class="legend"><span><i class="lg full"></i>смена 12 ч и больше</span><span><i class="lg part"></i>короткая смена</span><span><i class="lg off"></i>вых — выходной</span><span><i class="lg none"></i>пусто — нет в графике</span><span><i class="lg low"></i>на смене меньше двух</span></div></section>`;
 }
 function scheduleKeyCard() {
-  return `<section class="card"><h2>Пароль графика</h2><p class="muted">График всех сотрудников лежит на сайте Пульта в зашифрованном виде, чтобы чужие не увидели имена и часы. Введи пароль из секрета SCHEDULE_KEY. Он хранится только на этом устройстве.</p>
+  return `<section class="card"><h2>Пароль графика и календаря</h2><p class="muted">График всех сотрудников и твой календарь лежат на сайте Пульта в зашифрованном виде, чтобы чужие их не увидели. Введи пароль графика (один и тот же для обоих). Он хранится только на этом устройстве.</p>
 <form data-form="save-schkey" class="addrow"><input class="wide" type="password" name="key" placeholder="пароль" autocomplete="off" required><button class="btn primary">${S.settings.scheduleKey ? 'Сменить' : 'Сохранить'}</button></form></section>`;
 }
 function shiftsView() {
@@ -509,6 +509,54 @@ function shiftsView() {
   }
   return out + scheduleKeyCard();
 }
+/* ---------- Календарь (из Google Календаря) ---------- */
+const calEvents = () => (S.calendar && S.calendar.events) || [];
+const evDot = (x) => `<span class="pdot" style="background:${esc(x.col)}"></span>`;
+function calStatus() {
+  const c = S.calendar;
+  if (ui.calState === 'loading' && !c) return 'Загружаю календарь…';
+  if (!c) return ui.calState === 'fail' ? `Не удалось загрузить календарь: ${esc(ui.calError || 'нет сети')}` : 'Календарь ещё не загружен';
+  return `Google Календарь прочитан ${esc(L.timeAgoRu(c.fetchedAt || new Date(c.at).toISOString()))}${ui.calState === 'fail' ? ` · <span class="warnc">сейчас не обновился (${esc(ui.calError || 'нет сети')}), показан сохранённый</span>` : ''}`;
+}
+function evRow(x) {
+  return `<div class="item evrow"><span class="evtime">${esc(L.eventTime(x))}</span><span class="evbar" style="background:${esc(x.col)}"></span><div class="grow">${esc(x.t)}${x.loc ? `<div class="muted tiny">${esc(x.loc)}</div>` : ''}</div></div>`;
+}
+function calendarCard() {
+  if (!S.calendar) return '';
+  const today = todayISO(), tomorrow = L.addDays(today, 1), now = L.formatTime(new Date());
+  const t = L.eventsOn(calEvents(), today).filter((x) => x.hol || !x.e || x.e > now || !x.s), tm = L.eventsOn(calEvents(), tomorrow);
+  return `<section class="card"><div class="row space"><h2>📅 Календарь</h2><button class="btn small ghost" data-act="go-cal">Открыть</button></div>
+<div class="grid2"><div><div class="muted tiny">Сегодня</div>${t.length ? t.slice(0, 5).map(evRow).join('') : '<div class="empty">Больше ничего нет</div>'}${t.length > 5 ? `<div class="muted tiny">и ещё ${t.length - 5}</div>` : ''}</div>
+<div><div class="muted tiny">Завтра, ${esc(dayLabel(tomorrow))}</div>${tm.length ? tm.slice(0, 5).map(evRow).join('') : '<div class="empty">Пусто</div>'}${tm.length > 5 ? `<div class="muted tiny">и ещё ${tm.length - 5}</div>` : ''}</div></div></section>`;
+}
+function calMonth(key, sel) {
+  const today = todayISO(), [y, m] = key.split('-').map(Number), evs = calEvents();
+  const prev = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`, next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+  const tasksOn = (iso) => S.tasks.filter((x) => x.date === iso && !x.done).length;
+  const cells = L.monthGrid(y, m).map((w) => `<tr>${w.map((iso) => {
+    const list = L.eventsOn(evs, iso), out = iso.slice(0, 7) !== key, n = tasksOn(iso), hol = list.some((x) => x.hol), wd = L.fromISO(iso).getDay();
+    return `<td class="${out ? 'out' : ''} ${iso === today ? 'today' : ''} ${iso === sel ? 'sel' : ''} ${hol || wd === 0 || wd === 6 ? 'we' : ''}" data-act="cal-day" data-k="${iso}"><div class="cdn">${Number(iso.slice(8))}${n ? `<span class="ctk">${n}</span>` : ''}</div>${list.slice(0, 3).map((x) => `<div class="cev" style="border-left-color:${esc(x.col)}">${esc(x.t)}</div>`).join('')}${list.length > 3 ? `<div class="cmore">ещё ${list.length - 3}</div>` : ''}</td>`;
+  }).join('')}</tr>`).join('');
+  return `<section class="card"><div class="row space"><button class="btn" data-act="cal-month" data-k="${prev}" aria-label="Предыдущий месяц">◀</button><h2 style="margin:0">${esc(L.MONTHS_RU[m - 1])} ${y}</h2><button class="btn" data-act="cal-month" data-k="${next}" aria-label="Следующий месяц">▶</button></div>
+<table class="cal"><thead><tr>${['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'].map((d) => `<th>${d}</th>`).join('')}</tr></thead><tbody>${cells}</tbody></table>
+<p class="muted tiny">Цифра в кружке — задачи Пульта на этот день. Нажми на день, чтобы увидеть всё подробно.</p></section>`;
+}
+function calDay(iso) {
+  const list = L.eventsOn(calEvents(), iso), tasks = S.tasks.filter((x) => x.date === iso).sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
+  const isToday = iso === todayISO();
+  return `<section class="card"><div class="row space"><button class="btn" data-act="cal-day" data-k="${L.addDays(iso, -1)}" aria-label="Предыдущий день">◀</button><h2 style="margin:0;text-align:center">${isToday ? 'Сегодня, ' : ''}${esc(L.formatDateRu(L.fromISO(iso)))}</h2><button class="btn" data-act="cal-day" data-k="${L.addDays(iso, 1)}" aria-label="Следующий день">▶</button></div>
+${isToday ? '' : `<div class="muted" style="margin:6px 0"><button class="linkbtn" data-act="cal-day" data-k="${todayISO()}">к сегодня</button></div>`}
+${list.length ? list.map(evRow).join('') : '<div class="empty">В календаре на этот день ничего нет</div>'}
+${tasks.length ? `<h2 style="margin-top:14px">Задачи · ${tasks.length}</h2>${taskList(tasks)}` : ''}</section>`;
+}
+function calView() {
+  const today = todayISO();
+  const head = `<section class="card"><div class="row space"><span class="muted tiny">${calStatus()} · обновляется раз в день</span><button class="btn small ghost" data-act="cal-refresh">Обновить</button></div></section>`;
+  if (!S.calendar) return head + (ui.calState === 'nokey' || ui.calError === 'неверный пароль' || !S.settings.scheduleKey ? scheduleKeyCard() : '');
+  const sel = ui.calDay || today, key = ui.calMonth || sel.slice(0, 7);
+  return head + `<div class="grid2 calgrid"><div>${calMonth(key, sel)}</div><div>${calDay(sel)}</div></div>`;
+}
+
 function moreView() {
   const subs = [['habits', 'Привычки'], ['routines', 'Рутины'], ['goals', 'Цели'], ['shopping', 'Покупки'], ['finance', 'Финансы'], ['stats', 'Статистика'], ['settings', 'Настройки']];
   return `<div class="seg wrap">${subs.map(([k, t]) => `<button class="${ui.more === k ? 'on' : ''}" data-act="more" data-k="${k}">${t}</button>`).join('')}</div>${{ habits: habitsView, routines: routinesView, goals: goalsView, shopping: shoppingView, finance: financeView, stats: statsView, settings: settingsView }[ui.more]()}`;
@@ -546,10 +594,10 @@ function importBackup(file) {
 }
 
 /* ---------- Отрисовка ---------- */
-const TABS = [['home', '🏠', 'Главная'], ['projects', '📁', 'Проекты'], ['tasks', '✅', 'Задачи'], ['notes', '📝', 'Заметки'], ['news', '📰', 'Новости'], ['shifts', '🧋', 'Смены'], ['more', '⋯', 'Ещё']];
-const VIEWS = { home: homeView, projects: projectsView, tasks: tasksView, notes: notesView, news: newsView, shifts: shiftsView, more: moreView };
+const TABS = [['home', '🏠', 'Главная'], ['projects', '📁', 'Проекты'], ['tasks', '✅', 'Задачи'], ['cal', '📅', 'Календарь'], ['notes', '📝', 'Заметки'], ['news', '📰', 'Новости'], ['shifts', '🧋', 'Смены'], ['more', '⋯', 'Ещё']];
+const VIEWS = { home: homeView, projects: projectsView, tasks: tasksView, cal: calView, notes: notesView, news: newsView, shifts: shiftsView, more: moreView };
 function renderTabs() {
-  $('#tabs').innerHTML = TABS.map(([k, ic, t]) => `<button class="${ui.tab === k ? 'on' : ''}" data-tab="${k}"><span class="ic">${ic}</span>${t}</button>`).join('');
+  $('#tabs').innerHTML = TABS.map(([k, ic, t]) => `<button class="${ui.tab === k ? 'on' : ''}" data-tab="${k}" aria-label="${t}"><span class="ic">${ic}</span>${t}</button>`).join('');
 }
 function renderModal() {
   const m = $('#modal'), md = ui.modal;
@@ -713,6 +761,23 @@ async function loadSchedule(force) {
   loadSchedule.busy = false;
   if ((ui.tab === 'shifts' || ui.tab === 'home') && !ui.modal && !document.activeElement?.matches?.('input, textarea, select')) render();
 }
+async function loadCalendar(force) {
+  if (!force && S.calendar && Date.now() - S.calendar.at < 9 * 60000) return;
+  if (loadCalendar.busy) return; loadCalendar.busy = true;
+  ui.calState = 'loading';
+  try {
+    let j;
+    try { j = await getJson('./data/calendar.json?t=' + Math.floor(Date.now() / 60000)); } catch (e) { throw new Error(/404/.test(e && e.message) ? 'на сайте календаря пока нет' : e && e.name === 'AbortError' ? 'таймаут' : 'нет сети'); }
+    if (!S.settings.scheduleKey) { ui.calState = 'nokey'; throw Object.assign(new Error('нужен пароль'), { nokey: true }); }
+    if (!window.crypto || !crypto.subtle) throw new Error('браузер не умеет расшифровывать');
+    const d = L.parseSiteCalendar(await L.decryptJson(j && j.enc, S.settings.scheduleKey)); if (!d) throw new Error('формат');
+    S.calendar = { at: Date.now(), fetchedAt: j.fetchedAt || null, events: d.events };
+    ui.calState = 'ok'; ui.calError = ''; save();
+    if (force) toast('Календарь обновлён');
+  } catch (e) { if (!(e && e.nokey)) ui.calState = 'fail'; ui.calError = (e && e.message) || 'ошибка'; if (force && !(e && e.nokey)) toast('Не удалось обновить календарь: ' + ui.calError); }
+  loadCalendar.busy = false;
+  if ((ui.tab === 'cal' || ui.tab === 'home') && !ui.modal && !document.activeElement?.matches?.('input, textarea, select')) render();
+}
 async function loadRates(force) {
   if (!force && S.rates && Date.now() - S.rates.at < 6 * 3600000) return;
   try {
@@ -778,6 +843,10 @@ const ACTS = {
   'sch-refresh': () => loadSchedule(true),
   'sch-seen': () => { if (S.schedule) { S.schedule.changesSeen = true; save(); render(); } },
   'sch-day': (d) => { ui.schDay = d.k; render(); },
+  'cal-day': (d) => { ui.calDay = d.k; ui.calMonth = d.k.slice(0, 7); render(); },
+  'cal-month': (d) => { ui.calMonth = d.k; render(); },
+  'cal-refresh': () => loadCalendar(true),
+  'go-cal': () => { ui.tab = 'cal'; ui.modal = null; render(); window.scrollTo(0, 0); loadCalendar(false); },
   'go-shifts': () => { ui.tab = 'shifts'; ui.modal = null; render(); window.scrollTo(0, 0); loadSchedule(false); },
   'news-save': (d) => {
     const x = (S.news && S.news.items || []).find((n) => n.link === d.link) || S.savedNews.find((n) => n.link === d.link); if (!x) return;
@@ -823,7 +892,7 @@ const FORMS = {
   'add-habit': (f, el) => { S.habits.list.push({ id: 'h' + uid(), name: fd(el).name.trim() }); },
   'add-fin': (f, el) => { const v = fd(el); S.finance.entries.push({ id: uid(), date: v.date, amount: Number(v.amount), category: v.category, note: v.note.trim() }); toast('Трата добавлена'); },
   'save-budget': (f, el) => { S.finance.budget = Number(fd(el).budget) || 0; toast('Бюджет сохранён'); },
-  'save-schkey': (f, el) => { S.settings.scheduleKey = fd(el).key; S.schedule = null; toast('Пароль сохранён, загружаю график'); loadSchedule(true); },
+  'save-schkey': (f, el) => { S.settings.scheduleKey = fd(el).key; S.schedule = null; S.calendar = null; toast('Пароль сохранён, загружаю график и календарь'); loadSchedule(true); loadCalendar(true); },
   'save-claude': (f, el) => { S.settings.claudeGist = fd(el).gist.trim().replace(/^.*gist\.github\.com\/[^/]+\//, '').replace(/[^a-zA-Z0-9]/g, ''); S.claude = null; toast('Сохранено'); loadClaude(); },
   'save-stats': (f, el) => { const v = fd(el); S.settings.twitch = v.twitch.trim(); S.settings.youtube = v.youtube.trim(); toast('Сохранено'); },
   'city-search': (f, el) => { searchCity(fd(el).q.trim()); return 'skip'; },
@@ -846,7 +915,7 @@ document.addEventListener('click', (e) => {
   if (ui.ambient) { hideAmbient(); return; }
   if (e.target.id === 'modal') { ui.modal = null; render(); return; }
   const tab = e.target.closest('[data-tab]');
-  if (tab) { if (ui.rec && tab.dataset.tab !== 'notes') ui.rec.finishSoon(); ui.tab = tab.dataset.tab; ui.modal = null; render(); if (ui.tab === 'news') loadNews(false); if (ui.tab === 'shifts') loadSchedule(false); window.scrollTo(0, 0); return; }
+  if (tab) { if (ui.rec && tab.dataset.tab !== 'notes') ui.rec.finishSoon(); ui.tab = tab.dataset.tab; ui.modal = null; render(); if (ui.tab === 'news') loadNews(false); if (ui.tab === 'shifts') loadSchedule(false); if (ui.tab === 'cal') loadCalendar(false); window.scrollTo(0, 0); return; }
   const a = e.target.closest('[data-act]');
   if (a && ACTS[a.dataset.act]) ACTS[a.dataset.act](a.dataset);
 });
@@ -948,7 +1017,7 @@ async function boot() {
   window.__pultBooted = true;
   persist();
   setInterval(tick, 15000);
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { ui.lastTouch = Date.now(); tick(); loadWeather(false); loadClaude(); loadRates(false); loadNews(false); loadSchedule(false); } });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { ui.lastTouch = Date.now(); tick(); loadWeather(false); loadClaude(); loadRates(false); loadNews(false); loadSchedule(false); loadCalendar(false); } });
   setInterval(() => { if (document.visibilityState === 'visible') loadWeather(false); }, 15 * 60000);
   setInterval(() => { if (document.visibilityState === 'visible') loadClaude(); }, 120000);
   setupUpdates();
@@ -960,5 +1029,7 @@ async function boot() {
   setInterval(() => { if (document.visibilityState === 'visible') loadNews(false); }, 30 * 60000);
   loadSchedule(false);
   setInterval(() => { if (document.visibilityState === 'visible') loadSchedule(false); }, 10 * 60000);
+  loadCalendar(false);
+  setInterval(() => { if (document.visibilityState === 'visible') loadCalendar(false); }, 10 * 60000);
 }
 boot().catch((e) => { console.error(e); window.__pultFail?.(); });
