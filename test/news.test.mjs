@@ -147,3 +147,16 @@ test('повторы: одинаковое описание у разных за
   const r = N.buildNews([{ topic: 'github', title: 'a/x', link: 'https://a', date: new Date(now - 3600000).toISOString(), desc: d }, { topic: 'github', title: 'b/y', link: 'https://b', date: new Date(now - 7200000).toISOString(), desc: d }], now);
   assert.equal(r.length, 1);
 });
+test('GitHub: серия похожих репозиториев (общая основа имени или почти то же описание) — спам', () => {
+  const r = (owner, name, desc) => ({ full_name: `${owner}/${name}`, name, owner: { login: owner }, html_url: `https://github.com/${owner}/${name}`, stargazers_count: 500, created_at: '2026-11-14T00:00:00Z', description: desc });
+  const out = N.githubRepos({ items: [
+    r('a1984', 'blender-ai-copilot-hub', 'Blender AI copilot assistant for modeling and scenes'),
+    r('b1981', 'blender-ai-copilot-lab', 'Blender AI copilot helper for modeling and scenes'),
+    r('c1986', 'blender-ai-copilot-studio', 'AI copilot for Blender modeling and scenes, free'),
+    r('x', 'video-tool', 'Smart video generator agent with many presets included'),
+    r('y', 'clip-maker', 'Smart video generator agent with many presets included now'),
+    r('z', 'cut-pro', 'Smart video generator agent with many presets, included'),
+    r('ok', 'blender-ai-mcp-addon', 'MCP addon that lets Claude drive Blender'),
+  ] });
+  assert.deepEqual(out.map((x) => x.owner), ['ok']);
+});

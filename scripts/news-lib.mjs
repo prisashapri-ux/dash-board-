@@ -93,8 +93,14 @@ export function githubRepos(j) {
   const nameKey = (r) => String(r.name || r.full_name.split('/')[1] || '').toLowerCase();
   const descKey = (r) => norm(r.description || '');
   const count = (key) => { const m = {}; for (const r of list) { const k = key(r); if (k) m[k] = (m[k] || 0) + 1; } return m; };
-  const byName = count(nameKey), byDesc = count(descKey);
-  const spam = (r) => byName[nameKey(r)] >= 3 || (descKey(r).length >= 20 && byDesc[descKey(r)] >= 3);
+  // Основа имени без последнего слова: blender-ai-copilot-hub и blender-ai-copilot-lab — одна серия.
+  const baseKey = (r) => { const n = nameKey(r).split(/[-_.]/).filter(Boolean); return n.length >= 3 ? n.slice(0, -1).join('-') : ''; };
+  const byName = count(nameKey), byDesc = count(descKey), byBase = count(baseKey);
+  // Почти одинаковые описания (больше 60% общих слов) у 3 и больше репозиториев — тоже серия клонов.
+  const stems = list.map((r) => titleStems(r.description || ''));
+  const near = (i, k) => { const a = stems[i], b = stems[k]; if (Math.min(a.size, b.size) < 4) return false; let c = 0; for (const w of a) if (b.has(w)) c++; return c / (a.size + b.size - c) > 0.6; };
+  const nearCount = list.map((_, i) => list.reduce((n, __, k) => n + (near(i, k) ? 1 : 0), 0)); // считает и себя
+  const spam = (r) => { const i = list.indexOf(r); return byName[nameKey(r)] >= 3 || (descKey(r).length >= 20 && byDesc[descKey(r)] >= 3) || byBase[baseKey(r)] >= 3 || nearCount[i] >= 3; };
   const seen = new Set(), out = [];
   for (const r of [...list].sort((a, b) => (b.stargazers_count || 0) - (a.stargazers_count || 0))) {
     if (spam(r)) continue;
