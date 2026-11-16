@@ -10,7 +10,10 @@ fs.rmSync(dist, { recursive: true, force: true });
 fs.mkdirSync(dist, { recursive: true });
 
 const copy = (from, to) => fs.copyFileSync(from, path.join(dist, to));
-for (const f of fs.readdirSync(src)) if (!['sw.js', 'index.html'].includes(f)) copy(path.join(src, f), f);
+for (const f of fs.readdirSync(src)) if (!['sw.js', 'index.html'].includes(f) && fs.statSync(path.join(src, f)).isFile()) copy(path.join(src, f), f);
+// Шрифты стилей оформления (OFL, с кириллицей): грузятся браузером, только когда стиль выбран.
+const fonts = path.join(src, 'fonts');
+if (fs.existsSync(fonts)) { fs.mkdirSync(path.join(dist, 'fonts'), { recursive: true }); for (const f of fs.readdirSync(fonts)) copy(path.join(fonts, f), path.join('fonts', f)); }
 const icons = path.join(root, 'icons');
 for (const f of fs.existsSync(icons) ? fs.readdirSync(icons) : []) copy(path.join(icons, f), f);
 fs.writeFileSync(path.join(dist, '.nojekyll'), '');

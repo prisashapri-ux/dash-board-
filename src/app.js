@@ -412,6 +412,7 @@ function settingsView() {
 <form data-form="city-search" class="addrow"><input class="wide" name="q" placeholder="Название города" autocomplete="off" required><button class="btn primary">Найти</button></form>
 ${ui.cityResults ? (ui.cityResults.length ? ui.cityResults.map((c, i) => `<div class="item"><button class="ttl" data-act="city-pick" data-i="${i}">${esc(c.name)}<span class="chip">${esc([c.admin1, c.country].filter(Boolean).join(', '))}</span></button></div>`).join('') : '<div class="empty">Ничего не найдено или нет сети</div>') : ''}</section>
 <section class="card"><h2>Режимы главной</h2><div class="addrow"><div style="flex:1 1 140px"><label class="lbl">Утро с</label><select data-set="morningFrom">${hourOpts(s.morningFrom)}</select></div><div style="flex:1 1 140px"><label class="lbl">День с</label><select data-set="dayFrom">${hourOpts(s.dayFrom)}</select></div><div style="flex:1 1 140px"><label class="lbl">Вечер с</label><select data-set="eveningFrom">${hourOpts(s.eveningFrom)}</select></div></div>
+<label class="lbl">Стиль оформления</label><select data-set="theme">${L.THEMES.map(([v, t]) => `<option value="${v}" ${(s.theme || '') === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
 <label class="lbl">Ночная тема (тёмно-красная)</label><select data-set="night">${[['auto', 'Авто: вечером и ночью'], ['on', 'Всегда включена'], ['off', 'Выключена']].map(([v, t]) => `<option value="${v}" ${s.night === v ? 'selected' : ''}>${t}</option>`).join('')}</select></section>
 <section class="card"><h2>Экран</h2>
 <label class="lbl">Не гасить экран, пока открыт Пульт</label><select data-set="keepAwake">${[['on', 'Да'], ['off', 'Нет']].map(([v, t]) => `<option value="${v}" ${(s.keepAwake ? 'on' : 'off') === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
@@ -611,6 +612,7 @@ function renderModal() {
 function applyTheme() {
   const night = L.isNight(S.settings, hour());
   document.body.classList.toggle('night', night);
+  for (const [k] of L.THEMES) if (k) document.body.classList.toggle('theme-' + k, S.settings.theme === k);
   const meta = document.querySelector('meta[name=theme-color]'); if (meta) meta.content = night ? '#120a0a' : '#0f1115';
   const dim = $('#dim'), a = night ? Number(S.settings.nightDim) || 0 : 0;
   if (dim) { dim.style.opacity = String(a / 100); dim.hidden = !a; }

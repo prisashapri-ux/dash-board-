@@ -7,8 +7,10 @@ export const DEFAULT_SETTINGS = {
   city: 'Сочи', lat: 43.585, lon: 39.72,
   morningFrom: 5, dayFrom: 12, eveningFrom: 18,
   night: 'auto', mode: 'auto', twitch: '', youtube: '', claudeGist: '',
-  keepAwake: true, ambientMin: 5, ambientPhotos: true, nightDim: 30, scheduleKey: '',
+  keepAwake: true, ambientMin: 5, ambientPhotos: true, nightDim: 30, scheduleKey: '', theme: '',
 };
+/** Стили оформления: ключ → название. '' — классический тёмный. */
+export const THEMES = [['', 'Классика'], ['aurora', 'Аврора'], ['bento', 'Бенто'], ['paper', 'Журнал'], ['neon', 'Неон'], ['crt', 'Терминал']];
 export const DEFAULT_ROUTINES = {
   morning: ['Стакан воды', 'Зарядка', 'Прогулка с собаками', 'План на день'],
   evening: ['Итоги дня', 'План на завтра', 'Телефон на зарядку', 'Лечь до полуночи'],

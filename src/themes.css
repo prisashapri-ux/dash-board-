@@ -1,0 +1,195 @@
+/* Стили оформления (Ещё → Настройки → «Стиль оформления»). Класс на body: theme-<ключ>.
+   Цвета темы действуют только без ночной темы (body.night), форма (шрифты, углы, рамки) — всегда.
+   Шрифты лежат в fonts/ (OFL, кириллица + латиница) и грузятся, только когда стиль выбран. */
+
+@font-face { font-family: "Manrope"; font-weight: 200; font-display: swap; src: url(fonts/manrope-cyrillic-200-normal.woff2) format("woff2"); unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "Manrope"; font-weight: 200; font-display: swap; src: url(fonts/manrope-latin-200-normal.woff2) format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2122, U+2190-2193; }
+@font-face { font-family: "Manrope"; font-weight: 400; font-display: swap; src: url(fonts/manrope-cyrillic-400-normal.woff2) format("woff2"); unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "Manrope"; font-weight: 400; font-display: swap; src: url(fonts/manrope-latin-400-normal.woff2) format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2122, U+2190-2193; }
+@font-face { font-family: "Manrope"; font-weight: 600; font-display: swap; src: url(fonts/manrope-cyrillic-600-normal.woff2) format("woff2"); unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "Manrope"; font-weight: 600; font-display: swap; src: url(fonts/manrope-latin-600-normal.woff2) format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2122, U+2190-2193; }
+@font-face { font-family: "Manrope"; font-weight: 800; font-display: swap; src: url(fonts/manrope-cyrillic-800-normal.woff2) format("woff2"); unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "Manrope"; font-weight: 800; font-display: swap; src: url(fonts/manrope-latin-800-normal.woff2) format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2122, U+2190-2193; }
+@font-face { font-family: "Unbounded"; font-weight: 500; font-display: swap; src: url(fonts/unbounded-cyrillic-500-normal.woff2) format("woff2"); unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "Unbounded"; font-weight: 500; font-display: swap; src: url(fonts/unbounded-latin-500-normal.woff2) format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2122, U+2190-2193; }
+@font-face { font-family: "Unbounded"; font-weight: 800; font-display: swap; src: url(fonts/unbounded-cyrillic-800-normal.woff2) format("woff2"); unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "Unbounded"; font-weight: 800; font-display: swap; src: url(fonts/unbounded-latin-800-normal.woff2) format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2122, U+2190-2193; }
+@font-face { font-family: "Playfair Display"; font-weight: 400; font-display: swap; src: url(fonts/playfair-display-cyrillic-400-normal.woff2) format("woff2"); unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "Playfair Display"; font-weight: 400; font-display: swap; src: url(fonts/playfair-display-latin-400-normal.woff2) format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2122, U+2190-2193; }
+@font-face { font-family: "Playfair Display"; font-weight: 700; font-display: swap; src: url(fonts/playfair-display-cyrillic-700-normal.woff2) format("woff2"); unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "Playfair Display"; font-weight: 700; font-display: swap; src: url(fonts/playfair-display-latin-700-normal.woff2) format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2122, U+2190-2193; }
+@font-face { font-family: "Playfair Display"; font-weight: 900; font-display: swap; src: url(fonts/playfair-display-cyrillic-900-normal.woff2) format("woff2"); unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "Playfair Display"; font-weight: 900; font-display: swap; src: url(fonts/playfair-display-latin-900-normal.woff2) format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2122, U+2190-2193; }
+@font-face { font-family: "Lora"; font-weight: 400; font-display: swap; src: url(fonts/lora-cyrillic-400-normal.woff2) format("woff2"); unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "Lora"; font-weight: 400; font-display: swap; src: url(fonts/lora-latin-400-normal.woff2) format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2122, U+2190-2193; }
+@font-face { font-family: "Lora"; font-weight: 600; font-display: swap; src: url(fonts/lora-cyrillic-600-normal.woff2) format("woff2"); unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "Lora"; font-weight: 600; font-display: swap; src: url(fonts/lora-latin-600-normal.woff2) format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2122, U+2190-2193; }
+@font-face { font-family: "Russo One"; font-weight: 400; font-display: swap; src: url(fonts/russo-one-cyrillic-400-normal.woff2) format("woff2"); unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "Russo One"; font-weight: 400; font-display: swap; src: url(fonts/russo-one-latin-400-normal.woff2) format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2122, U+2190-2193; }
+@font-face { font-family: "JetBrains Mono"; font-weight: 400; font-display: swap; src: url(fonts/jetbrains-mono-cyrillic-400-normal.woff2) format("woff2"); unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "JetBrains Mono"; font-weight: 400; font-display: swap; src: url(fonts/jetbrains-mono-latin-400-normal.woff2) format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2122, U+2190-2193; }
+@font-face { font-family: "JetBrains Mono"; font-weight: 700; font-display: swap; src: url(fonts/jetbrains-mono-cyrillic-700-normal.woff2) format("woff2"); unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "JetBrains Mono"; font-weight: 700; font-display: swap; src: url(fonts/jetbrains-mono-latin-700-normal.woff2) format("woff2"); unicode-range: U+0000-00FF, U+2000-206F, U+20AC, U+2122, U+2190-2193; }
+
+/* ================= 1. Аврора: глубокая ночь, северное сияние, стеклянные карточки ================= */
+body.theme-aurora:not(.night) {
+  --bg: #070a18; --card: rgba(255,255,255,.055); --card2: rgba(255,255,255,.08); --line: rgba(255,255,255,.12); --text: #eef1ff; --muted: #9ca5c9;
+  --accent: #8b7bff; --accent2: #3ee6c4; --warn: #ffc56b; --bad: #ff7a93; --on-accent: #fff;
+}
+body.theme-aurora { font-family: "Manrope", -apple-system, sans-serif; }
+body.theme-aurora:not(.night)::before { content: ""; position: fixed; z-index: -1; left: 0; top: 0; right: 0; bottom: 0; pointer-events: none;
+  background: radial-gradient(ellipse 60% 50% at 12% 8%, rgba(120,90,255,.45), transparent 70%), radial-gradient(ellipse 50% 45% at 92% 18%, rgba(30,200,190,.32), transparent 70%),
+    radial-gradient(ellipse 70% 50% at 70% 100%, rgba(255,80,170,.22), transparent 70%), #070a18; }
+body.theme-aurora:not(.night), body.theme-aurora:not(.night) .app { background: transparent; }
+body.theme-aurora .card, body.theme-aurora .pcard { border-radius: 26px; box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 20px 40px -24px rgba(0,0,0,.6); }
+body.theme-aurora h2 { font-weight: 800; letter-spacing: -.01em; }
+body.theme-aurora h3 { font-weight: 600; letter-spacing: .12em; }
+body.theme-aurora .clock { font-weight: 200; font-size: 104px; letter-spacing: -.04em; }
+body.theme-aurora:not(.night) .clock { color: #f6f4ff; text-shadow: 0 0 40px rgba(139,123,255,.55), 0 0 90px rgba(62,230,196,.25); }
+body.theme-aurora .wx-t { font-weight: 200; }
+body.theme-aurora .seg { border-radius: 999px; padding: 4px; }
+body.theme-aurora .seg button { border-radius: 999px; }
+body.theme-aurora:not(.night) .seg button.on, body.theme-aurora:not(.night) .btn.primary { background: -webkit-linear-gradient(0deg, #8b7bff, #4fd6e6); background: linear-gradient(90deg, #8b7bff, #4fd6e6); border-color: transparent; box-shadow: 0 8px 24px -8px rgba(139,123,255,.8); }
+body.theme-aurora .btn { border-radius: 999px; }
+body.theme-aurora:not(.night) .bar > span { background: -webkit-linear-gradient(0deg, #8b7bff, #3ee6c4); background: linear-gradient(90deg, #8b7bff, #3ee6c4); }
+body.theme-aurora .chk::before { border-radius: 50%; }
+body.theme-aurora:not(.night) .tabbar { background: #0c0e22; border-top-color: rgba(255,255,255,.1); }
+body.theme-aurora:not(.night) .tabbar button.on { color: #fff; text-shadow: 0 0 16px rgba(139,123,255,.9); }
+body.theme-aurora:not(.night) .sheet { background: #12142a; }
+
+/* ================= 2. Бенто: светлый, яркие плитки, толстый контур и жёсткие тени ================= */
+body.theme-bento { --ink: #121212; font-family: "Manrope", -apple-system, sans-serif; }
+body.theme-bento.night { --ink: var(--line); }
+body.theme-bento:not(.night) {
+  --bg: #f3eee4; --card: #ffffff; --card2: #f3eee4; --line: #121212; --text: #121212; --muted: #5d5850;
+  --accent: #ff5c8a; --accent2: #2bb673; --warn: #e08a00; --bad: #e0393e; --on-accent: #121212;
+  --y: #ffd23f; --l: #c3f36b; --b: #9cc8ff; --p: #ffb3cf;
+}
+body.theme-bento .card, body.theme-bento .pcard { border: 2.5px solid var(--ink); border-radius: 20px; box-shadow: 5px 5px 0 var(--ink); }
+body.theme-bento h2, body.theme-bento .pname { font-family: "Unbounded", sans-serif; font-weight: 800; font-size: 17px; letter-spacing: -.01em; text-transform: none; }
+body.theme-bento h3 { font-family: "Unbounded", sans-serif; font-weight: 500; color: var(--text); }
+body.theme-bento .clock { font-family: "Unbounded", sans-serif; font-weight: 800; font-size: 92px; letter-spacing: -.05em; }
+body.theme-bento .wx-t { font-family: "Unbounded", sans-serif; font-weight: 800; }
+body.theme-bento:not(.night) .grid2:first-of-type > .card:first-child { background: var(--y); }
+body.theme-bento:not(.night) .grid2:first-of-type > .card:nth-child(2) { background: var(--b); }
+body.theme-bento:not(.night) .grid2 + .seg + .card, body.theme-bento:not(.night) .grid2 ~ .grid2 > .card:nth-child(2) { background: var(--l); }
+body.theme-bento:not(.night) .grid2 ~ .grid2 ~ .grid2 > .card:first-child { background: var(--p); }
+body.theme-bento:not(.night) .date, body.theme-bento:not(.night) .card .muted { color: #3b3730; }
+body.theme-bento .card .item, body.theme-bento .card .kv, body.theme-bento .evrow { border-bottom-color: rgba(18,18,18,.18); }
+body.theme-bento .btn, body.theme-bento .seg { border: 2.5px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); border-radius: 14px; font-weight: 600; }
+body.theme-bento:not(.night) .btn { background: #fff; }
+body.theme-bento:not(.night) .seg { background: #fff; }
+body.theme-bento .seg button.on { border: 2px solid var(--ink); }
+body.theme-bento:not(.night) .seg button { color: var(--text); }
+body.theme-bento .chk::before { border: 2.5px solid var(--ink); border-radius: 8px; background: #fff; }
+body.theme-bento:not(.night) .chk.on::before { background: var(--accent2); }
+body.theme-bento .bar { border: 2px solid var(--ink); height: 12px; border-radius: 6px; }
+body.theme-bento:not(.night) .bar { background: #fff; }
+body.theme-bento .chip { border: 1.5px solid var(--ink); color: var(--text); }
+body.theme-bento:not(.night) .tabbar { background: #fff; border-top: 2.5px solid var(--ink); }
+body.theme-bento:not(.night) .tabbar button { color: #5d5850; }
+body.theme-bento .tabbar button.on { color: var(--text); }
+body.theme-bento:not(.night) .tabbar button.on .ic { background: var(--y); border: 2px solid var(--ink); border-radius: 12px; margin: 0 auto; width: 52px; }
+body.theme-bento input, body.theme-bento select, body.theme-bento textarea { border: 2px solid var(--ink); }
+body.theme-bento:not(.night) input, body.theme-bento:not(.night) select, body.theme-bento:not(.night) textarea { background: #fff; }
+
+/* ================= 3. Журнал: бумага, засечки, линейки как в газете ================= */
+body.theme-paper:not(.night) {
+  --bg: #f2ece0; --card: #f2ece0; --card2: #e8e0d0; --line: #cfc5b2; --text: #1d1a16; --muted: #6f665a;
+  --accent: #b5361b; --accent2: #2f6b4f; --warn: #a8680a; --bad: #b5361b; --on-accent: #f7f2e8; --ink: #1d1a16;
+}
+body.theme-paper { font-family: "Lora", Georgia, serif; }
+body.theme-paper.night { --ink: var(--line); }
+body.theme-paper .card, body.theme-paper .pcard { border: 0; border-top: 3px solid var(--ink); border-radius: 0; padding: 12px 4px 10px; background: transparent; box-shadow: none; }
+body.theme-paper .card::after { content: ""; display: block; }
+body.theme-paper h2, body.theme-paper .pname { font-family: "Playfair Display", Georgia, serif; font-weight: 700; font-size: 24px; letter-spacing: -.01em; }
+body.theme-paper h3 { font-family: "Lora", serif; font-size: 13px; letter-spacing: .2em; color: var(--accent); }
+body.theme-paper .clock { font-family: "Playfair Display", Georgia, serif; font-weight: 900; font-size: 112px; letter-spacing: -.03em; }
+body.theme-paper .date { font-family: "Playfair Display", serif; font-style: italic; font-size: 24px; color: var(--text); }
+body.theme-paper .wx-t { font-family: "Lora", serif; font-weight: 400; }
+body.theme-paper .item, body.theme-paper .kv, body.theme-paper .evrow { border-bottom: 1px solid var(--line); }
+body.theme-paper .btn { border-radius: 0; border: 1px solid var(--ink); background: transparent; font-family: "Lora", serif; }
+body.theme-paper .btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+body.theme-paper .btn.ghost { border-color: transparent; border-bottom: 1px solid var(--ink); text-transform: uppercase; letter-spacing: .12em; font-size: 13px; }
+body.theme-paper .seg { border-radius: 0; background: transparent; border: 0; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); padding: 0; }
+body.theme-paper .seg button { border-radius: 0; font-family: "Playfair Display", serif; font-size: 18px; color: var(--muted); }
+body.theme-paper .seg button.on { background: transparent; color: var(--accent); font-style: italic; font-weight: 700; }
+body.theme-paper .chk::before { border-radius: 50%; border: 1.5px solid var(--ink); }
+body.theme-paper .chk.on::before { background: var(--accent); border-color: var(--accent); }
+body.theme-paper .bar { height: 3px; border-radius: 0; }
+body.theme-paper .bar > span { border-radius: 0; background: var(--accent); }
+body.theme-paper .chip { background: transparent; border: 1px solid var(--line); border-radius: 0; font-style: italic; }
+body.theme-paper .tabbar { background: var(--bg); border-top: 3px double var(--ink); }
+body.theme-paper .tabbar button { font-family: "Playfair Display", serif; font-size: 14px; }
+body.theme-paper .tabbar button.on { color: var(--accent); font-style: italic; }
+body.theme-paper .tabbar .ic { -webkit-filter: grayscale(1) contrast(1.1); filter: grayscale(1) contrast(1.1); }
+body.theme-paper .tabbar button.on .ic { -webkit-filter: none; filter: none; }
+body.theme-paper .sheet { border-radius: 0; background: var(--bg); }
+body.theme-paper input, body.theme-paper select, body.theme-paper textarea { border-radius: 0; background: transparent; border: 0; border-bottom: 1.5px solid var(--ink); }
+body.theme-paper .strip button { border-radius: 0; background: transparent; }
+
+/* ================= 4. Неон: киберпанк для стримера, свечение розового и бирюзового ================= */
+body.theme-neon:not(.night) {
+  --bg: #0a0614; --card: #120b22; --card2: #1b1033; --line: #3a2563; --text: #f3ecff; --muted: #a493c9;
+  --accent: #19e6ff; --accent2: #ff2bd6; --warn: #ffe14d; --bad: #ff4d6d; --on-accent: #0a0614;
+}
+body.theme-neon { font-family: "Manrope", -apple-system, sans-serif; }
+body.theme-neon:not(.night)::before { content: ""; position: fixed; z-index: -1; left: 0; top: 0; right: 0; bottom: 0; pointer-events: none;
+  background: linear-gradient(rgba(255,43,214,.07) 1px, transparent 1px) 0 0 / 40px 40px, linear-gradient(90deg, rgba(25,230,255,.06) 1px, transparent 1px) 0 0 / 40px 40px,
+    radial-gradient(ellipse 80% 40% at 50% 0%, rgba(255,43,214,.25), transparent 70%), #0a0614; }
+body.theme-neon:not(.night), body.theme-neon:not(.night) .app { background: transparent; }
+body.theme-neon .card, body.theme-neon .pcard { border-radius: 4px 22px 4px 22px; }
+body.theme-neon:not(.night) .card, body.theme-neon:not(.night) .pcard { background: rgba(18,11,34,.88); border: 1px solid rgba(255,43,214,.45); box-shadow: 0 0 0 1px rgba(25,230,255,.08), 0 0 22px -6px rgba(255,43,214,.45), inset 0 0 30px -14px rgba(25,230,255,.35); }
+body.theme-neon h2, body.theme-neon .pname { font-family: "Russo One", sans-serif; font-weight: 400; text-transform: uppercase; letter-spacing: .06em; font-size: 17px; }
+body.theme-neon:not(.night) h2 { color: #fff; text-shadow: 0 0 10px rgba(255,43,214,.7); }
+body.theme-neon h3 { font-family: "Russo One", sans-serif; font-weight: 400; letter-spacing: .14em; }
+body.theme-neon:not(.night) h3 { color: var(--accent); }
+body.theme-neon .clock { font-family: "Russo One", sans-serif; font-weight: 400; font-size: 100px; letter-spacing: .02em; }
+body.theme-neon:not(.night) .clock { color: #eaffff; text-shadow: 0 0 8px rgba(25,230,255,.9), 0 0 28px rgba(25,230,255,.6), 0 0 60px rgba(255,43,214,.45); }
+body.theme-neon .wx-t { font-family: "Russo One", sans-serif; }
+body.theme-neon .btn, body.theme-neon .seg, body.theme-neon .seg button { border-radius: 4px 14px 4px 14px; }
+body.theme-neon:not(.night) .btn { background: transparent; border-color: rgba(25,230,255,.6); color: var(--accent); text-transform: uppercase; letter-spacing: .06em; font-size: 14px; }
+body.theme-neon:not(.night) .btn.primary, body.theme-neon:not(.night) .seg button.on { background: var(--accent); color: var(--on-accent); box-shadow: 0 0 18px rgba(25,230,255,.7); }
+body.theme-neon .seg button { text-transform: uppercase; letter-spacing: .08em; font-family: "Russo One", sans-serif; }
+body.theme-neon:not(.night) .bar > span { background: -webkit-linear-gradient(0deg, #ff2bd6, #19e6ff); background: linear-gradient(90deg, #ff2bd6, #19e6ff); box-shadow: 0 0 10px rgba(255,43,214,.8); }
+body.theme-neon:not(.night) .chk::before { border-color: var(--accent2); box-shadow: 0 0 8px rgba(255,43,214,.6); }
+body.theme-neon:not(.night) .tabbar { background: #0d0819; border-top: 1px solid rgba(255,43,214,.5); box-shadow: 0 -6px 24px -10px rgba(255,43,214,.6); }
+body.theme-neon .tabbar button { text-transform: uppercase; letter-spacing: .04em; font-size: 13px; }
+body.theme-neon:not(.night) .tabbar button.on { color: var(--accent); text-shadow: 0 0 10px rgba(25,230,255,.9); }
+
+/* ================= 5. Терминал: ретро-монитор, люминофор и строки развёртки ================= */
+body.theme-crt:not(.night) {
+  --bg: #040904; --card: #071207; --card2: #0b1c0b; --line: #1f4a1f; --text: #a8ff9e; --muted: #5fa358;
+  --accent: #6dff5c; --accent2: #6dff5c; --warn: #ffb000; --bad: #ff5f4a; --on-accent: #031003;
+}
+body.theme-crt { font-family: "JetBrains Mono", Menlo, monospace; font-size: 15px; }
+body.theme-crt:not(.night) { text-shadow: 0 0 6px rgba(109,255,92,.35); }
+body.theme-crt:not(.night)::after { content: ""; position: fixed; z-index: 70; left: 0; top: 0; right: 0; bottom: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0, rgba(0,0,0,.22) 1px, transparent 1px, transparent 3px), radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,.55)); }
+body.theme-crt .card, body.theme-crt .pcard { border-radius: 2px; border: 1px solid var(--line); }
+body.theme-crt:not(.night) .card, body.theme-crt:not(.night) .pcard { box-shadow: inset 0 0 0 1px rgba(109,255,92,.06), 0 0 18px -8px rgba(109,255,92,.5); }
+body.theme-crt h2, body.theme-crt .pname { font-weight: 700; font-size: 16px; text-transform: uppercase; letter-spacing: .06em; }
+body.theme-crt h2::before { content: "> "; color: var(--muted); }
+body.theme-crt h3 { font-size: 13px; letter-spacing: .1em; }
+body.theme-crt .clock { font-weight: 700; font-size: 96px; letter-spacing: -.02em; }
+body.theme-crt:not(.night) .clock { text-shadow: 0 0 10px rgba(109,255,92,.8), 0 0 34px rgba(109,255,92,.4); }
+body.theme-crt .clock::after { content: "\2588"; font-size: .6em; margin-left: 10px; vertical-align: .1em; -webkit-animation: crt-blink 1s steps(1) infinite; animation: crt-blink 1s steps(1) infinite; }
+@-webkit-keyframes crt-blink { 50% { opacity: 0; } }
+@keyframes crt-blink { 50% { opacity: 0; } }
+body.theme-crt .date::before { content: "$ date: "; color: var(--muted); }
+body.theme-crt .wx-t { font-weight: 700; }
+body.theme-crt .btn, body.theme-crt .seg, body.theme-crt .seg button, body.theme-crt input, body.theme-crt select, body.theme-crt textarea, body.theme-crt .chip, body.theme-crt .strip button { border-radius: 0; }
+body.theme-crt .btn { background: transparent; text-transform: uppercase; font-size: 14px; }
+body.theme-crt .btn::before { content: "["; margin-right: 4px; color: var(--muted); }
+body.theme-crt .btn::after { content: "]"; margin-left: 4px; color: var(--muted); }
+body.theme-crt .seg button { text-transform: uppercase; font-size: 14px; }
+body.theme-crt .seg button.on { text-shadow: none; }
+body.theme-crt .chk::before { border-radius: 0; }
+body.theme-crt .bar { border-radius: 0; height: 10px; border: 1px solid var(--line); background: transparent; }
+body.theme-crt .bar > span { border-radius: 0; background: repeating-linear-gradient(90deg, var(--accent) 0, var(--accent) 6px, transparent 6px, transparent 8px); }
+body.theme-crt .tabbar { border-top: 1px solid var(--line); }
+body.theme-crt .tabbar button { text-transform: uppercase; font-size: 13px; }
+body.theme-crt .tabbar .ic { -webkit-filter: grayscale(1) sepia(1) hue-rotate(60deg) saturate(3); filter: grayscale(1) sepia(1) hue-rotate(60deg) saturate(3); }
+body.theme-crt .tabbar button.on { background: var(--accent); color: var(--on-accent); text-shadow: none; }
+body.theme-crt .tabbar button.on .ic { -webkit-filter: grayscale(1) brightness(.2); filter: grayscale(1) brightness(.2); }
+body.theme-crt .sheet { border-radius: 0; }
