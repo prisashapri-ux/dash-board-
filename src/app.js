@@ -42,7 +42,7 @@ function normalize(raw) {
   };
 }
 const save = () => saveState(S);
-const projects = () => L.mergeProjects(S.remote.projects, S.projects);
+const projects = () => L.mergeProjects(S.remote.projects, S.projects, S.remote.removed || []);
 const projectById = (id) => projects().find((p) => p.id === id);
 const hour = () => new Date().getHours();
 const mode = () => L.effectiveMode(S.settings, hour());
@@ -632,7 +632,7 @@ async function fetchProjects(manual) {
     if (!r.ok) throw new Error('http ' + r.status);
     const j = await r.json();
     if (!Array.isArray(j.projects)) throw new Error('формат');
-    S.remote = { updated: j.updated || null, projects: j.projects }; save();
+    S.remote = { updated: j.updated || null, projects: j.projects, removed: Array.isArray(j.removed) ? j.removed : [] }; save();
     if (manual) toast('Проекты обновлены');
   } catch { if (manual) toast('Нет сети: показаны сохранённые проекты'); }
   render();

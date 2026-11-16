@@ -138,9 +138,9 @@ test('разбор ответа Open-Meteo и формат температур�
 test('адрес запроса погоды идёт только на Open-Meteo', () => {
   assert.ok(L.weatherUrl(43.585, 39.72).startsWith('https://api.open-meteo.com/v1/forecast?latitude=43.585&longitude=39.72'));
 });
-test('projects.json: 7 проектов, корректные этапы и уникальные id', () => {
+test('projects.json: 6 проектов, корректные этапы и уникальные id', () => {
   const j = JSON.parse(fs.readFileSync(new URL('../src/projects.json', import.meta.url), 'utf8'));
-  assert.equal(j.projects.length, 7);
+  assert.equal(j.projects.length, 6);
   const ids = new Set();
   for (const p of j.projects) {
     assert.ok(L.STAGES.includes(p.stage), p.id);
@@ -148,7 +148,7 @@ test('projects.json: 7 проектов, корректные этапы и ун
     assert.ok(p.tasks.length > 0 && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(p.updated) && p.deadline === null);
     for (const t of p.tasks) { assert.ok(!ids.has(t.id)); ids.add(t.id); }
   }
-  assert.deepEqual(j.projects.map((p) => p.id), ['mimi', 'twitch', 'gamevideo', 'vlog', 'video2d', 'video2d-ru', 'pult']);
+  assert.deepEqual(j.projects.map((p) => p.id), ['mimi', 'twitch', 'gamevideo', 'vlog', 'video2d', 'video2d-ru']);
 });
 
 test('wttr.in: разбор ответа и перевод кодов', () => {
@@ -266,4 +266,9 @@ test('этапы производства: текущий этап, процен
   assert.deepEqual(r.checks, []); assert.equal(r.title, '');
   assert.equal(r.log.length, 1); assert.equal(r.log[0].title, 'Поездка в горы');
   assert.equal(L.resetPipeline(r, '2026-11-16T11:00:00Z').log.length, 1, 'пустой цикл в историю не идёт');
+});
+
+test('убранный проект не возвращается из локальной копии', () => {
+  const m = L.mergeProjects([{ id: 'a', updated: '2026-11-12' }], [{ id: 'pult', updated: '2026-11-15' }, { id: 'b', updated: '2026-11-15' }], ['pult']);
+  assert.deepEqual(m.map((p) => p.id), ['a', 'b']);
 });

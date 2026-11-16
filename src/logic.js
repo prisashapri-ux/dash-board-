@@ -53,7 +53,10 @@ export function isNight(settings, hour) {
 
 const t = (s) => Date.parse(s) || 0;
 /** Слияние проектов из projects.json и локальных правок: по каждому проекту побеждает более новый `updated`. */
-export function mergeProjects(remote = [], local = []) {
+// `removed` — id проектов, убранных из projects.json: их не показываем, даже если на устройстве есть локальная копия.
+export function mergeProjects(remote = [], local = [], removed = []) {
+  const gone = new Set(removed);
+  remote = remote.filter((p) => !gone.has(p.id)); local = local.filter((p) => !gone.has(p.id));
   const map = new Map();
   for (const p of remote) map.set(p.id, p);
   for (const p of local) {

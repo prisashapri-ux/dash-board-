@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-12",
+ "updated": "2026-11-16",
  "projects": [
   {
    "id": "mimi",
@@ -219,61 +219,9 @@
    ],
    "note": "",
    "updated": "2026-11-12T16:30:00Z"
-  },
-  {
-   "id": "pult",
-   "name": "Пульт на iPad",
-   "emoji": "📟",
-   "stage": "В работе",
-   "progress": 45,
-   "next": "Поставить на iPad и проверить",
-   "deadline": null,
-   "tasks": [
-    {
-     "id": "pult-1",
-     "title": "Опросник",
-     "done": true,
-     "due": null
-    },
-    {
-     "id": "pult-2",
-     "title": "Первая версия на GitHub Pages",
-     "done": true,
-     "due": null
-    },
-    {
-     "id": "pult-5",
-     "title": "Идеи из похожих проектов",
-     "done": true,
-     "due": null
-    },
-    {
-     "id": "pult-6",
-     "title": "Поставить на iPad и проверить погоду",
-     "done": false,
-     "due": null
-    },
-    {
-     "id": "pult-3",
-     "title": "Notion и календарь",
-     "done": false,
-     "due": null
-    },
-    {
-     "id": "pult-7",
-     "title": "Статистика Twitch и YouTube",
-     "done": false,
-     "due": null
-    },
-    {
-     "id": "pult-4",
-     "title": "Камеры и 3D-участок",
-     "done": false,
-     "due": null
-    }
-   ],
-   "note": "",
-   "updated": "2026-11-12T16:30:00Z"
   }
+ ],
+ "removed": [
+  "pult"
  ]
 }
