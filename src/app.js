@@ -43,6 +43,8 @@ function normalize(raw) {
 }
 const save = () => saveState(S);
 const projects = () => L.mergeProjects(S.remote.projects, S.projects, S.remote.removed || []);
+// Все задачи по дням: личные и задачи проектов со сроком.
+const allTasks = () => S.tasks.concat(L.projectDatedTasks(projects()));
 const projectById = (id) => projects().find((p) => p.id === id);
 const hour = () => new Date().getHours();
 const mode = () => L.effectiveMode(S.settings, hour());
@@ -59,7 +61,7 @@ function taskRow(t, opts = {}) {
   const p = t.projectId ? projectById(t.projectId) : null;
   const late = !t.done && t.date < today;
   return `<div class="item ${t.done ? 'done' : ''}"><button class="chk ${t.done ? 'on' : ''}" data-act="toggle-task" data-id="${esc(t.id)}" aria-label="Отметить"></button>
-<button class="ttl" data-act="edit-task" data-id="${esc(t.id)}">${esc(t.title)}${t.time ? `<span class="chip">${esc(t.time)}</span>` : ''}${p ? `<span class="chip">${esc(p.emoji)} ${esc(p.name.slice(0, 22))}</span>` : ''}${opts.date || late ? `<span class="chip ${late ? 'bad' : ''}">${L.formatShortRu(t.date)}</span>` : ''}</button></div>`;
+<button class="ttl" data-act="${t.ptaskId ? 'open-project' : 'edit-task'}" data-id="${esc(t.ptaskId ? t.projectId : t.id)}">${esc(t.title)}${t.time ? `<span class="chip">${esc(t.time)}</span>` : ''}${p ? `<span class="chip">${esc(p.emoji)} ${esc(p.name.slice(0, 22))}</span>` : ''}${opts.date || late ? `<span class="chip ${late ? 'bad' : ''}">${L.formatShortRu(t.date)}</span>` : ''}</button></div>`;
 }
 const taskList = (list, opts) => (list.length ? list.map((t) => taskRow(t, opts)).join('') : '<div class="empty">Пока пусто</div>');
 function quickTask(date, ph) {
@@ -142,7 +144,7 @@ function projectsSummary() {
 }
 function homeView() {
   const now = new Date(), today = todayISO(), tomorrow = L.addDays(today, 1), m = mode();
-  const g = L.groupTasks(S.tasks, today);
+  const g = L.groupTasks(allTasks(), today);
   const seg = ['auto', 'morning', 'day', 'evening'].map((k, i) => `<button class="${S.settings.mode === k ? 'on' : ''}" data-act="mode" data-mode="${k}">${['Авто', 'Утро', 'День', 'Вечер'][i]}</button>`).join('');
   let out = `<div class="grid2"><section class="card"><div class="clock" id="clock">${L.formatTime(now)}</div><div class="date" id="date">${esc(L.formatDateRu(now))}</div><div class="muted tiny" style="margin-top:8px">Режим: ${{ morning: 'утро', day: 'день', evening: 'вечер' }[m]}${S.settings.mode === 'auto' ? ' (по времени)' : ' (вручную)'}</div></section>${weatherCard()}</div><div class="seg">${seg}</div>${claudeCard()}`;
   const todayCard = `<section class="card"><h2>Сегодня</h2>${g.overdue.length ? `<div class="chip bad">Просрочено: ${g.overdue.length}</div>${taskList(g.overdue)}` : ''}${taskList(g.today)}${quickTask(today, '+ задача на сегодня')}</section>`;
@@ -150,7 +152,7 @@ function homeView() {
   if (m === 'morning') out += `<div class="grid2">${todayCard}${projectsNext()}</div><div class="grid2">${routineCard('morning')}${timeCard()}</div>${newsCard()}`;
   else if (m === 'day') out += `<div class="grid2">${todayCard}${projectsSummary()}</div><div class="grid2">${timeCard()}${ratesCard(true)}</div>`;
   else {
-    const s = L.daySummary({ tasks: S.tasks, habits: S.habits.list, checks: S.habits.checks, entries: S.finance.entries, today, monthlyBudget: S.finance.budget });
+    const s = L.daySummary({ tasks: allTasks(), habits: S.habits.list, checks: S.habits.checks, entries: S.finance.entries, today, monthlyBudget: S.finance.budget });
     out += `<div class="grid2"><section class="card"><h2>Итоги дня</h2><div class="row">${ring(s.pct)}<div class="grow">
 <div class="stat">Задачи: <b>${s.done} из ${s.total}</b></div><div class="stat">Привычки: <b>${s.habitsDone} из ${s.habitsTotal}</b></div>
 <div class="stat">Потрачено: <b>${money(s.spent)}</b>${s.dailyBudget ? ` из ${money(s.dailyBudget)} в день` : ' <span class="muted">(бюджет не задан)</span>'}</div></div></div></section>
@@ -252,7 +254,7 @@ function dateBtn(attr, value, empty, cls = '') {
 function projectModal(p) {
   const pi = pipeInfo(p); // у каналов вместо этапа и процента проекта — этапы ролика или стрима
   const done = p.tasks.filter((t) => t.done).length, today = todayISO();
-  const tasks = [...p.tasks].sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0));
+  const tasks = [...p.tasks].sort((a, b) => ((a.done ? 1 : 0) - (b.done ? 1 : 0)) || ((a.due || '9') + (a.time || '')).localeCompare((b.due || '9') + (b.time || '')));
   return `<div class="sheet psheet"><div class="sheet-head"><button class="btn back" data-act="close-modal" aria-label="Назад">‹ Назад</button><div class="grow"><h2>${esc(p.emoji)} ${esc(p.name)}</h2>${p.subtitle ? `<div class="muted">${esc(p.subtitle)}</div>` : ''}</div><button class="btn" data-act="close-modal">Готово</button></div>
 <div class="sheet-body">
 ${pi ? pipeSection(p, pi) : `<label class="lbl">Этап проекта</label><div class="seg stages">${L.STAGES.map((s) => `<button class="${s === p.stage ? 'on' : ''}" data-act="p-stage" data-v="${esc(s)}">${esc(s)}</button>`).join('')}</div>
@@ -272,7 +274,7 @@ ${p.note ? `<p class="muted">${esc(p.note)}</p>` : ''}<p class="muted tiny">Из
 /* ---------- Задачи ---------- */
 function projectOptions(sel) { return `<option value="">Без проекта</option>${projects().map((p) => `<option value="${esc(p.id)}" ${p.id === sel ? 'selected' : ''}>${esc(p.emoji)} ${esc(p.name)}</option>`).join('')}`; }
 function tasksView() {
-  const today = todayISO(), g = L.groupTasks(S.tasks, today), strip = L.weekStrip(S.tasks, today), sel = ui.addDate || today;
+  const today = todayISO(), g = L.groupTasks(allTasks(), today), strip = L.weekStrip(allTasks(), today), sel = ui.addDate || today;
   const grp = (title, list, opts, always = true) => (always || list.length ? `<section class="card"><h2>${title}${list.length ? ` · ${list.length}` : ''}</h2>${taskList(list, opts)}</section>` : '');
   return `<div class="strip">${strip.map((d) => `<button class="${d.date === sel ? 'on' : ''}" data-act="strip-day" data-date="${d.date}"><span class="wd">${d.weekday}</span><span class="dn">${d.day}</span><span class="cn ${d.count ? 'has' : ''}">${d.count}</span></button>`).join('')}</div>
 <section class="card"><form data-form="add-task"><div class="addrow"><input class="wide" name="title" placeholder="Новая задача" autocomplete="off" required></div>
@@ -548,7 +550,7 @@ function calendarCard() {
 function calMonth(key, sel) {
   const today = todayISO(), [y, m] = key.split('-').map(Number), evs = calEvents();
   const prev = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`, next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
-  const tasksOn = (iso) => S.tasks.filter((x) => x.date === iso && !x.done).length;
+  const tasksOn = (iso) => allTasks().filter((x) => x.date === iso && !x.done).length;
   const cells = L.monthGrid(y, m).map((w) => `<tr>${w.map((iso) => {
     const list = L.eventsOn(evs, iso).sort((a, b) => (!!b.hol - !!a.hol) || ((b.plan && !b.cont ? 1 : 0) - (a.plan && !a.cont ? 1 : 0))), out = iso.slice(0, 7) !== key, n = tasksOn(iso), hol = list.some((x) => x.hol), wd = L.fromISO(iso).getDay();
     return `<td class="${out ? 'out' : ''} ${iso === today ? 'today' : ''} ${iso === sel ? 'sel' : ''} ${hol || wd === 0 || wd === 6 ? 'we' : ''}" data-act="cal-day" data-k="${iso}"><div class="cdn">${Number(iso.slice(8))}${n ? `<span class="ctk">${n}</span>` : ''}</div>${list.slice(0, 3).map((x) => `<div class="cev" style="border-left-color:${esc(x.col)};--c:${esc(x.col)}"${x.plan ? ` title="${esc(x.plan)}"` : ''}>${x.plan && !x.isPlan ? `▸ ${esc(planShort(x))}` : esc(x.t)}</div>`).join('')}${list.length > 3 ? `<div class="cmore">ещё ${list.length - 3}</div>` : ''}</td>`;
@@ -558,7 +560,7 @@ function calMonth(key, sel) {
 <p class="muted tiny">Цифра в кружке — задачи Пульта на этот день. Нажми на день, чтобы увидеть всё подробно.</p></section>`;
 }
 function calDay(iso) {
-  const list = L.eventsOn(calEvents(), iso), tasks = S.tasks.filter((x) => x.date === iso).sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
+  const list = L.eventsOn(calEvents(), iso), tasks = allTasks().filter((x) => x.date === iso).sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
   const isToday = iso === todayISO();
   return `<section class="card"><div class="row space"><button class="btn" data-act="cal-day" data-k="${L.addDays(iso, -1)}" aria-label="Предыдущий день">◀</button><h2 style="margin:0;text-align:center">${isToday ? 'Сегодня, ' : ''}${esc(L.formatDateRu(L.fromISO(iso)))}</h2><button class="btn" data-act="cal-day" data-k="${L.addDays(iso, 1)}" aria-label="Следующий день">▶</button></div>
 ${isToday ? '' : `<div class="muted" style="margin:6px 0"><button class="linkbtn" data-act="cal-day" data-k="${todayISO()}">к сегодня</button></div>`}
@@ -827,7 +829,11 @@ const byId = (list, id) => list.find((x) => x.id === id);
 
 const ACTS = {
   mode: (d) => { S.settings.mode = d.mode; save(); render(); },
-  'toggle-task': (d) => { const t = byId(S.tasks, d.id); if (t) { t.done = !t.done; save(); render(); } },
+  'toggle-task': (d) => {
+    const m = /^p:(.+):([^:]+)$/.exec(d.id);
+    if (m) { editProject(m[1], (p) => { const t = byId(p.tasks, m[2]); if (t) t.done = !t.done; }); render(); return; }
+    const t = byId(S.tasks, d.id); if (t) { t.done = !t.done; save(); render(); }
+  },
   'edit-task': (d) => { ui.modal = { type: 'task', id: d.id }; renderModal(); },
   'del-task': (d) => { S.tasks = S.tasks.filter((t) => t.id !== d.id); ui.modal = null; save(); render(); },
   'close-modal': () => { ui.modal = null; render(); },

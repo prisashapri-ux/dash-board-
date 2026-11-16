@@ -752,3 +752,13 @@ export function applyPlan(events, plan) {
   }
   return out.sort(calCmp);
 }
+
+/** Задачи проектов со сроком → в общий список задач по дням (id вида «p:<проект>:<задача>»). */
+export function projectDatedTasks(projects) {
+  const out = [];
+  for (const p of projects || []) for (const t of p.tasks || []) {
+    if (!t || !/^\d{4}-\d{2}-\d{2}$/.test(t.due || '')) continue;
+    out.push({ id: `p:${p.id}:${t.id}`, title: t.title, date: t.due, time: /^\d{2}:\d{2}$/.test(t.time || '') ? t.time : '', done: !!t.done, projectId: p.id, ptaskId: t.id });
+  }
+  return out;
+}

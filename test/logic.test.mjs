@@ -284,3 +284,8 @@ test('habitMonth: сетка месяца, будущие дни и итог', (
   const d20 = r.weeks.flat().find((d) => d && d.day === 20);
   assert.ok(d20.on && d20.future);
 });
+test('задачи проектов со сроком попадают в список по дням', () => {
+  const list = L.projectDatedTasks([{ id: 'a', tasks: [{ id: 't1', title: 'Монтаж', due: '2026-11-21', time: '14:00', done: false }, { id: 't2', title: 'Без срока', due: null }] }]);
+  assert.deepEqual(list, [{ id: 'p:a:t1', title: 'Монтаж', date: '2026-11-21', time: '14:00', done: false, projectId: 'a', ptaskId: 't1' }]);
+  assert.equal(L.groupTasks(list, '2026-11-21').today.length, 1);
+});
