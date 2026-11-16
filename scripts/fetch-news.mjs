@@ -13,20 +13,36 @@ const UA = 'Mozilla/5.0 (compatible; PultNews/1.0; RSS reader)';
 const get = (url, headers = {}) => fetch(url, { headers: { 'User-Agent': UA, ...headers }, signal: AbortSignal.timeout(15000), redirect: 'follow' })
   .then((r) => { if (!r.ok) throw new Error('http ' + r.status); return r; });
 
-async function loadGithub(feed) {
+// Все запросы к GitHub собираем в один список, а клоны и спам ищем по нему целиком:
+// серия клонов часто разбросана по разным запросам.
+let githubAll = null;
+function loadGithubAll() {
+  if (githubAll) return githubAll;
   const since = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
-  const q = `${feed.github} in:name,description,topics created:>${since} stars:>20`;
   const h = { Accept: 'application/vnd.github+json' };
   if (process.env.GITHUB_TOKEN) h.Authorization = 'Bearer ' + process.env.GITHUB_TOKEN;
-  const repos = githubRepos(await (await get(`https://api.github.com/search/repositories?q=${encodeURIComponent(q)}&sort=stars&order=desc&per_page=40`, h)).json());
-  // Спам с накрученными звёздами обычно идёт с только что созданных аккаунтов: авторов моложе 30 дней пропускаем.
-  const ages = {};
-  await Promise.all([...new Set(repos.map((x) => x.owner))].map(async (login) => {
-    try { ages[login] = Date.parse((await (await get('https://api.github.com/users/' + encodeURIComponent(login), h)).json()).created_at); } catch { /* не узнали, оставляем */ }
-  }));
-  const items = repos.filter((x) => !(Date.now() - ages[x.owner] < 30 * 86400000)).slice(0, 15);
-  console.log(`  GitHub: ${repos.length} без клонов, ${items.length} после проверки авторов`);
-  if (!items.length) throw new Error('пусто');
+  githubAll = (async () => {
+    const raw = new Map();
+    for (const f of NEWS_FEEDS.filter((x) => x.github)) {
+      const q = `${f.github} in:name,description,topics created:>${since} stars:>20`;
+      try { for (const r of (await (await get(`https://api.github.com/search/repositories?q=${encodeURIComponent(q)}&sort=stars&order=desc&per_page=50`, h)).json()).items || []) raw.set(r.id, r); } catch (e) { console.log('  GitHub-поиск: ' + e.message); }
+    }
+    const repos = githubRepos({ items: [...raw.values()] });
+    // Спам с накрученными звёздами обычно идёт с только что созданных аккаунтов: авторов моложе 30 дней пропускаем.
+    const ages = {};
+    await Promise.all([...new Set(repos.map((x) => x.owner))].map(async (login) => {
+      try { ages[login] = Date.parse((await (await get('https://api.github.com/users/' + encodeURIComponent(login), h)).json()).created_at); } catch { /* не узнали, оставляем */ }
+    }));
+    const items = repos.filter((x) => !(Date.now() - ages[x.owner] < 30 * 86400000)).slice(0, 20);
+    console.log(`  GitHub: найдено ${raw.size}, без клонов и спама ${repos.length}, после проверки авторов ${items.length}`);
+    return items;
+  })();
+  return githubAll;
+}
+async function loadGithub(feed) {
+  const first = NEWS_FEEDS.find((x) => x.github) === feed;
+  const items = first ? await loadGithubAll() : [];
+  if (first && !items.length) throw new Error('пусто');
   return items.map(({ owner, ...x }) => ({ topic: feed.topic, source: feed.source, ...x, github: true }));
 }
 
