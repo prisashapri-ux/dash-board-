@@ -79,6 +79,7 @@ function pipeInfo(p) {
   return { def, pipe, st: L.pipelineStatus(def, pipe.checks) };
 }
 const pipeNow = (pi) => (pi.st.finished ? 'Цикл пройден' : `${pi.st.current + 1}/${pi.st.stages.length} · ${pi.st.stages[pi.st.current].name}`);
+const pctOf = (p) => { const pi = pipeInfo(p); return pi ? pi.st.pct : p.progress; };
 function pipeLine(pi) {
   const u = pi.def.unit === 'стрим' ? 'Стрим' : 'Ролик';
   return `<div class="pipeline"><div class="row space tiny"><span class="muted">${u}${pi.pipe.title ? ': ' + esc(pi.pipe.title) : ''}</span><span class="muted">${pi.st.pct}%</span></div>
@@ -134,10 +135,10 @@ function claudeCard() {
 }
 function projectsNext() {
   const top = L.topProjects(projects(), 3);
-  return `<section class="card"><h2>Главные проекты</h2>${top.map((p) => `<div class="item"><div class="grow"><div>${esc(p.emoji)} <b>${esc(p.name)}</b></div><div class="muted">${(() => { const pi = pipeInfo(p); return pi ? `${pi.def.unit === 'стрим' ? 'Стрим' : 'Ролик'}: ${esc(pipeNow(pi))} · ` : ''; })()}Дальше: ${esc(p.next || '—')}</div></div><span class="chip">${p.progress}%</span></div>`).join('') || '<div class="empty">Нет активных проектов</div>'}</section>`;
+  return `<section class="card"><h2>Главные проекты</h2>${top.map((p) => `<div class="item"><div class="grow"><div>${esc(p.emoji)} <b>${esc(p.name)}</b></div><div class="muted">${(() => { const pi = pipeInfo(p); return pi ? `${pi.def.unit === 'стрим' ? 'Стрим' : 'Ролик'}: ${esc(pipeNow(pi))} · ` : ''; })()}Дальше: ${esc(p.next || '—')}</div></div><span class="chip">${pctOf(p)}%</span></div>`).join('') || '<div class="empty">Нет активных проектов</div>'}</section>`;
 }
 function projectsSummary() {
-  return `<section class="card"><h2>Проекты</h2>${projects().map((p) => `<div class="item"><span style="font-size:22px;margin-right:10px">${esc(p.emoji)}</span><div class="grow">${esc(p.name)}<div class="bar"><span style="width:${p.progress}%"></span></div></div><span class="chip">${p.progress}%</span></div>`).join('')}</section>`;
+  return `<section class="card"><h2>Проекты</h2>${projects().map((p) => `<div class="item"><span style="font-size:22px;margin-right:10px">${esc(p.emoji)}</span><div class="grow">${esc(p.name)}${(() => { const pi = pipeInfo(p); return pi ? `<span class="muted tiny"> · ${esc(pipeNow(pi))}</span>` : ''; })()}<div class="bar"><span style="width:${pctOf(p)}%"></span></div></div><span class="chip">${pctOf(p)}%</span></div>`).join('')}</section>`;
 }
 function homeView() {
   const now = new Date(), today = todayISO(), tomorrow = L.addDays(today, 1), m = mode();
@@ -239,10 +240,9 @@ ${list.length ? list.map((x) => newsItem(x, false)).join('') : S.news ? '<div cl
 function projectsView() {
   return `<div class="pgrid">${projects().map((p) => {
     const st = L.projectTaskStats(p), pi = pipeInfo(p);
-    return `<button class="pcard" data-act="open-project" data-id="${esc(p.id)}"><div class="row"><span class="em">${esc(p.emoji)}</span><div class="grow"><div class="pname">${esc(p.name)}</div>${p.subtitle ? `<div class="psub">${esc(p.subtitle)}</div>` : ''}</div><b>${p.progress}%</b></div>
-${stageBar(p.stage)}<div class="row space tiny muted"><span>${esc(p.stage)}</span><span>Задач: ${st.done}/${st.total}</span></div>
-<div class="bar"><span style="width:${p.progress}%"></span></div>
-${pi ? pipeLine(pi) : ''}<div>Дальше: <b>${esc(p.next || '—')}</b></div>${p.deadline ? `<div class="muted tiny">Дедлайн: ${L.formatShortRu(p.deadline)}</div>` : ''}</button>`;
+    return `<button class="pcard" data-act="open-project" data-id="${esc(p.id)}"><div class="row"><span class="em">${esc(p.emoji)}</span><div class="grow"><div class="pname">${esc(p.name)}</div>${p.subtitle ? `<div class="psub">${esc(p.subtitle)}</div>` : ''}</div>${pi ? '' : `<b>${p.progress}%</b>`}</div>
+${pi ? `${pipeLine(pi)}<div class="row space tiny muted"><span></span><span>Задачи канала: ${st.done}/${st.total}</span></div>` : `${stageBar(p.stage)}<div class="row space tiny muted"><span>${esc(p.stage)}</span><span>Задач: ${st.done}/${st.total}</span></div>
+<div class="bar"><span style="width:${p.progress}%"></span></div>`}<div>Дальше: <b>${esc(p.next || '—')}</b></div>${p.deadline ? `<div class="muted tiny">Дедлайн: ${L.formatShortRu(p.deadline)}</div>` : ''}</button>`;
   }).join('')}</div>`;
 }
 /** Кнопка с датой: настоящий выбор даты лежит прозрачно поверх, так на iPad открывается родное колесо дат. */
@@ -250,14 +250,14 @@ function dateBtn(attr, value, empty, cls = '') {
   return `<label class="datebtn ${cls} ${value ? 'has' : ''}"><span>📅 ${value ? L.formatShortRu(value) : esc(empty)}</span><input type="date" ${attr} value="${esc(value || '')}"></label>`;
 }
 function projectModal(p) {
+  const pi = pipeInfo(p); // у каналов вместо этапа и процента проекта — этапы ролика или стрима
   const done = p.tasks.filter((t) => t.done).length, today = todayISO();
   const tasks = [...p.tasks].sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0));
   return `<div class="sheet psheet"><div class="sheet-head"><button class="btn back" data-act="close-modal" aria-label="Назад">‹ Назад</button><div class="grow"><h2>${esc(p.emoji)} ${esc(p.name)}</h2>${p.subtitle ? `<div class="muted">${esc(p.subtitle)}</div>` : ''}</div><button class="btn" data-act="close-modal">Готово</button></div>
 <div class="sheet-body">
-${(() => { const pi = pipeInfo(p); return pi ? pipeSection(p, pi) : ''; })()}
-<label class="lbl">Этап проекта</label><div class="seg stages">${L.STAGES.map((s) => `<button class="${s === p.stage ? 'on' : ''}" data-act="p-stage" data-v="${esc(s)}">${esc(s)}</button>`).join('')}</div>
+${pi ? pipeSection(p, pi) : `<label class="lbl">Этап проекта</label><div class="seg stages">${L.STAGES.map((s) => `<button class="${s === p.stage ? 'on' : ''}" data-act="p-stage" data-v="${esc(s)}">${esc(s)}</button>`).join('')}</div>
 <label class="lbl">Прогресс</label><div class="progrow"><button class="btn big-btn" data-act="p-prog" data-d="-10" aria-label="Меньше на 10">−</button><div class="grow"><div class="progval">${p.progress}%</div><div class="bar big"><span style="width:${p.progress}%"></span></div></div><button class="btn big-btn" data-act="p-prog" data-d="10" aria-label="Больше на 10">+</button></div>
-<div class="chips">${[0, 25, 50, 75, 100].map((v) => `<button class="chipbtn ${p.progress === v ? 'on' : ''}" data-act="p-prog-set" data-v="${v}">${v}%</button>`).join('')}</div>
+<div class="chips">${[0, 25, 50, 75, 100].map((v) => `<button class="chipbtn ${p.progress === v ? 'on' : ''}" data-act="p-prog-set" data-v="${v}">${v}%</button>`).join('')}</div>`}
 <label class="lbl">Следующий шаг</label><input data-pfield="next" value="${esc(p.next)}" autocomplete="off" placeholder="Что сделать дальше">
 <label class="lbl">Дедлайн</label><div class="row gap">${dateBtn('data-pfield="deadline"', p.deadline, 'Без дедлайна')}${p.deadline ? `<button class="btn ghost" data-act="p-deadline-clear">Убрать</button><span class="muted">${(() => { const n = L.daysUntil(today, p.deadline); return n < 0 ? 'просрочен' : L.formatDaysLeft(n); })()}</span>` : ''}</div>
 <div class="row space" style="margin-top:18px"><h2 style="margin:0">Задачи</h2><span class="chip">${done} из ${p.tasks.length}</span></div>
