@@ -36,7 +36,8 @@ body.theme-aurora:not(.night) {
   --bg: #070a18; --card: rgba(255,255,255,.055); --card2: rgba(255,255,255,.08); --line: rgba(255,255,255,.12); --text: #eef1ff; --muted: #9ca5c9;
   --accent: #8b7bff; --accent2: #3ee6c4; --warn: #ffc56b; --bad: #ff7a93; --on-accent: #fff;
 }
-body.theme-aurora { font-family: "Manrope", -apple-system, sans-serif; }
+body.theme-aurora { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Manrope", sans-serif; }
+body.theme-aurora .clock, body.theme-aurora .wx-t { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Manrope", sans-serif; }
 body.theme-aurora:not(.night)::before { content: ""; position: fixed; z-index: -1; left: 0; top: 0; right: 0; bottom: 0; pointer-events: none;
   background: radial-gradient(ellipse 60% 50% at 12% 8%, rgba(120,90,255,.45), transparent 70%), radial-gradient(ellipse 50% 45% at 92% 18%, rgba(30,200,190,.32), transparent 70%),
     radial-gradient(ellipse 70% 50% at 70% 100%, rgba(255,80,170,.22), transparent 70%), #070a18; }

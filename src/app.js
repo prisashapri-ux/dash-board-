@@ -613,7 +613,7 @@ function applyTheme() {
   const night = L.isNight(S.settings, hour());
   document.body.classList.toggle('night', night);
   for (const [k] of L.THEMES) if (k) document.body.classList.toggle('theme-' + k, S.settings.theme === k);
-  const meta = document.querySelector('meta[name=theme-color]'); if (meta) meta.content = night ? '#120a0a' : '#0f1115';
+  const meta = document.querySelector('meta[name=theme-color]'); if (meta) meta.content = night ? '#120a0a' : ({ aurora: '#070a18', bento: '#f3eee4', paper: '#f2ece0', neon: '#0a0614', crt: '#040904' })[S.settings.theme] || '#0f1115';
   const dim = $('#dim'), a = night ? Number(S.settings.nightDim) || 0 : 0;
   if (dim) { dim.style.opacity = String(a / 100); dim.hidden = !a; }
   setKeepAwake(S.settings.keepAwake);
