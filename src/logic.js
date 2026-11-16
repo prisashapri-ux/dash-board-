@@ -718,3 +718,23 @@ export function monthGrid(y, m) {
 export function upcomingEvents(events, today, time, n = 5) {
   return (events || []).filter((x) => !x.hol && (x.d2 > today || (x.d2 === today && (!x.e || x.e > time)))).slice(0, n);
 }
+
+/* ---------- План контента поверх календаря ---------- */
+// Пункт плана: { d, s, e, t, note }. Если в этот день в календаре есть событие с тем же временем начала,
+// план становится его подписью (x.plan), иначе показывается отдельным событием с пометкой «план».
+export const PLAN_COLOR = '#c79be0';
+export function parseSitePlan(j) {
+  if (!j || !Array.isArray(j.items)) return null;
+  const re = /^\d{4}-\d{2}-\d{2}$/, tm = /^(\d{2}:\d{2})?$/;
+  return j.items.filter((x) => x && re.test(x.d) && tm.test(x.s || '') && tm.test(x.e || '') && (x.t || x.note))
+    .map((x) => ({ d: x.d, s: x.s || '', e: x.e || '', t: String(x.t || ''), note: String(x.note || '') }));
+}
+export function applyPlan(events, plan) {
+  const out = (events || []).map((x) => ({ ...x }));
+  for (const p of plan || []) {
+    const hit = p.s && out.find((x) => x.d === p.d && x.s === p.s && !x.hol && !x.isPlan);
+    if (hit) { hit.plan = p.note || p.t; continue; }
+    out.push({ t: p.t || p.note, d: p.d, d2: p.d, s: p.s, e: p.e, col: PLAN_COLOR, loc: '', hol: false, isPlan: true, plan: p.t ? p.note : '' });
+  }
+  return out.sort(calCmp);
+}

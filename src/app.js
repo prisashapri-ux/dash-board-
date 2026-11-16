@@ -511,7 +511,8 @@ function shiftsView() {
   return out + scheduleKeyCard();
 }
 /* ---------- Календарь (из Google Календаря) ---------- */
-const calEvents = () => (S.calendar && S.calendar.events) || [];
+const calEvents = () => L.applyPlan((S.calendar && S.calendar.events) || [], (S.calendar && S.calendar.plan) || []);
+const planShort = (x) => String(x.plan || '').split(' — ')[0];
 const evDot = (x) => `<span class="pdot" style="background:${esc(x.col)}"></span>`;
 function calStatus() {
   const c = S.calendar;
@@ -520,7 +521,7 @@ function calStatus() {
   return `Google Календарь прочитан ${esc(L.timeAgoRu(c.fetchedAt || new Date(c.at).toISOString()))}${ui.calState === 'fail' ? ` · <span class="warnc">сейчас не обновился (${esc(ui.calError || 'нет сети')}), показан сохранённый</span>` : ''}`;
 }
 function evRow(x) {
-  return `<div class="item evrow"><span class="evtime">${esc(L.eventTime(x))}</span><span class="evbar" style="background:${esc(x.col)}"></span><div class="grow">${esc(x.t)}${x.loc ? `<div class="muted tiny">${esc(x.loc)}</div>` : ''}</div></div>`;
+  return `<div class="item evrow"><span class="evtime">${esc(L.eventTime(x))}</span><span class="evbar" style="background:${esc(x.col)}"></span><div class="grow">${x.isPlan ? '<span class="planmark">план</span> ' : ''}${esc(x.t)}${x.plan ? `<div class="evplan">▸ ${esc(x.plan)}</div>` : ''}${x.loc ? `<div class="muted tiny">${esc(x.loc)}</div>` : ''}</div></div>`;
 }
 function calendarCard() {
   if (!S.calendar) return '';
@@ -535,8 +536,8 @@ function calMonth(key, sel) {
   const prev = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`, next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
   const tasksOn = (iso) => S.tasks.filter((x) => x.date === iso && !x.done).length;
   const cells = L.monthGrid(y, m).map((w) => `<tr>${w.map((iso) => {
-    const list = L.eventsOn(evs, iso), out = iso.slice(0, 7) !== key, n = tasksOn(iso), hol = list.some((x) => x.hol), wd = L.fromISO(iso).getDay();
-    return `<td class="${out ? 'out' : ''} ${iso === today ? 'today' : ''} ${iso === sel ? 'sel' : ''} ${hol || wd === 0 || wd === 6 ? 'we' : ''}" data-act="cal-day" data-k="${iso}"><div class="cdn">${Number(iso.slice(8))}${n ? `<span class="ctk">${n}</span>` : ''}</div>${list.slice(0, 3).map((x) => `<div class="cev" style="border-left-color:${esc(x.col)};--c:${esc(x.col)}">${esc(x.t)}</div>`).join('')}${list.length > 3 ? `<div class="cmore">ещё ${list.length - 3}</div>` : ''}</td>`;
+    const list = L.eventsOn(evs, iso).sort((a, b) => (!!b.hol - !!a.hol) || ((b.plan && !b.cont ? 1 : 0) - (a.plan && !a.cont ? 1 : 0))), out = iso.slice(0, 7) !== key, n = tasksOn(iso), hol = list.some((x) => x.hol), wd = L.fromISO(iso).getDay();
+    return `<td class="${out ? 'out' : ''} ${iso === today ? 'today' : ''} ${iso === sel ? 'sel' : ''} ${hol || wd === 0 || wd === 6 ? 'we' : ''}" data-act="cal-day" data-k="${iso}"><div class="cdn">${Number(iso.slice(8))}${n ? `<span class="ctk">${n}</span>` : ''}</div>${list.slice(0, 3).map((x) => `<div class="cev" style="border-left-color:${esc(x.col)};--c:${esc(x.col)}"${x.plan ? ` title="${esc(x.plan)}"` : ''}>${x.plan && !x.isPlan ? `▸ ${esc(planShort(x))}` : esc(x.t)}</div>`).join('')}${list.length > 3 ? `<div class="cmore">ещё ${list.length - 3}</div>` : ''}</td>`;
   }).join('')}</tr>`).join('');
   return `<section class="card"><div class="row space"><button class="btn" data-act="cal-month" data-k="${prev}" aria-label="Предыдущий месяц">◀</button><h2 style="margin:0">${esc(L.MONTHS_RU[m - 1])} ${y}</h2><button class="btn" data-act="cal-month" data-k="${next}" aria-label="Следующий месяц">▶</button></div>
 <table class="cal"><thead><tr>${['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'].map((d) => `<th>${d}</th>`).join('')}</tr></thead><tbody>${cells}</tbody></table>
@@ -775,7 +776,9 @@ async function loadCalendar(force) {
     if (!S.settings.scheduleKey) { ui.calState = 'nokey'; throw Object.assign(new Error('нужен пароль'), { nokey: true }); }
     if (!window.crypto || !crypto.subtle) throw new Error('браузер не умеет расшифровывать');
     const d = L.parseSiteCalendar(await L.decryptJson(j && j.enc, S.settings.scheduleKey)); if (!d) throw new Error('формат');
-    S.calendar = { at: Date.now(), fetchedAt: j.fetchedAt || null, events: d.events };
+    let plan = [];
+    try { const pj = await getJson('./data/plan.json?t=' + Math.floor(Date.now() / 60000)); plan = L.parseSitePlan(await L.decryptJson(pj && pj.enc, S.settings.scheduleKey)) || []; } catch { /* плана может не быть */ }
+    S.calendar = { at: Date.now(), fetchedAt: j.fetchedAt || null, events: d.events, plan };
     ui.calState = 'ok'; ui.calError = ''; save();
     if (force) toast('Календарь обновлён');
   } catch (e) { if (!(e && e.nokey)) ui.calState = 'fail'; ui.calError = (e && e.message) || 'ошибка'; if (force && !(e && e.nokey)) toast('Не удалось обновить календарь: ' + ui.calError); }

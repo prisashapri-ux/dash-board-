@@ -50,3 +50,13 @@ test('шифрование календаря туда и обратно', async
   const enc = await L.encryptJson({ events: [{ t: 'А', d: '2026-11-09', d2: '2026-11-09', s: '', e: '' }] }, 'пароль');
   assert.equal(L.parseSiteCalendar(await L.decryptJson(enc, 'пароль')).events[0].t, 'А');
 });
+test('план подписывает событие с тем же временем или добавляется отдельно', () => {
+  const evs = L.parseSiteCalendar({ events: [{ t: 'Работа над роликом', d: '2026-11-17', d2: '2026-11-17', s: '14:00', e: '20:00' }] }).events;
+  const plan = L.parseSitePlan({ items: [{ d: '2026-11-17', s: '14:00', e: '20:00', note: 'Ролик: сценарий' }, { d: '2026-11-18', s: '12:00', e: '18:00', t: 'Съёмка', note: 'идея и съёмка' }, { d: 'плохо' }] });
+  assert.equal(plan.length, 2);
+  const all = L.applyPlan(evs, plan);
+  assert.equal(all.length, 2);
+  assert.equal(all[0].plan, 'Ролик: сценарий'); assert.equal(evs[0].plan, undefined);
+  assert.equal(all[1].isPlan, true); assert.equal(all[1].t, 'Съёмка'); assert.equal(all[1].plan, 'идея и съёмка');
+  assert.equal(L.parseSitePlan({}), null);
+});
