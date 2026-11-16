@@ -281,3 +281,10 @@ table.sch tr.cnt td.low { color: var(--bad); font-weight: 700; }
 .pcaret { width: 24px; text-align: center; margin-left: 4px; }
 .pall { margin: 4px 0 10px 44px; min-height: 44px; }
 hr.sep { border: 0; border-top: 1px solid var(--line); margin: 18px 0 6px; }
+/* Заметки по проектам и переход в проект с главной */
+.nsel { width: auto; max-width: 220px; min-height: 44px; font-size: 14px; padding-top: 6px; padding-bottom: 6px; }
+.nsel-add { width: auto; max-width: 260px; -webkit-flex: 1 1 160px; flex: 1 1 160px; }
+textarea.short { min-height: 80px; }
+.pnote { border-bottom: 1px solid var(--line); padding: 10px 0 4px; }
+button.item.plink { width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; padding: 0; text-align: left; color: var(--text); }
+button.item.plink:last-child { border-bottom: 0; }

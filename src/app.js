@@ -20,7 +20,7 @@ function defaults() {
   };
 }
 let S = defaults();
-const ui = { pipeOpen: [], schDay: '', newsTopic: 'all', nwState: '', tab: 'home', more: 'habits', noteQuery: '', modal: null, addDate: null, habitEdit: false, routineEdit: false, cityResults: null, wxState: '', lastKey: '', photos: [], ambient: false, lastTouch: Date.now() };
+const ui = { pipeOpen: [], schDay: '', newsTopic: 'all', nwState: '', tab: 'home', more: 'habits', noteQuery: '', noteProject: '', modal: null, addDate: null, habitEdit: false, routineEdit: false, cityResults: null, wxState: '', lastKey: '', photos: [], ambient: false, lastTouch: Date.now() };
 
 function normalize(raw) {
   const d = defaults();
@@ -135,10 +135,10 @@ function claudeCard() {
 }
 function projectsNext() {
   const top = L.topProjects(projects(), 3);
-  return `<section class="card"><h2>Главные проекты</h2>${top.map((p) => `<div class="item"><div class="grow"><div>${esc(p.emoji)} <b>${esc(p.name)}</b></div><div class="muted">${(() => { const pi = pipeInfo(p); return pi ? `${pi.def.unit === 'стрим' ? 'Стрим' : 'Ролик'}: ${esc(pipeNow(pi))} · ` : ''; })()}Дальше: ${esc(p.next || '—')}</div></div><span class="chip">${pctOf(p)}%</span></div>`).join('') || '<div class="empty">Нет активных проектов</div>'}</section>`;
+  return `<section class="card"><h2>Главные проекты</h2>${top.map((p) => `<button class="item plink" data-act="open-project" data-id="${esc(p.id)}"><div class="grow"><div>${esc(p.emoji)} <b>${esc(p.name)}</b></div><div class="muted">${(() => { const pi = pipeInfo(p); return pi ? `${pi.def.unit === 'стрим' ? 'Стрим' : 'Ролик'}: ${esc(pipeNow(pi))} · ` : ''; })()}Дальше: ${esc(p.next || '—')}</div></div><span class="chip">${pctOf(p)}%</span><span class="muted pcaret">›</span></button>`).join('') || '<div class="empty">Нет активных проектов</div>'}</section>`;
 }
 function projectsSummary() {
-  return `<section class="card"><h2>Проекты</h2>${projects().map((p) => `<div class="item"><span style="font-size:22px;margin-right:10px">${esc(p.emoji)}</span><div class="grow">${esc(p.name)}${(() => { const pi = pipeInfo(p); return pi ? `<span class="muted tiny"> · ${esc(pipeNow(pi))}</span>` : ''; })()}<div class="bar"><span style="width:${pctOf(p)}%"></span></div></div><span class="chip">${pctOf(p)}%</span></div>`).join('')}</section>`;
+  return `<section class="card"><h2>Проекты</h2>${projects().map((p) => `<button class="item plink" data-act="open-project" data-id="${esc(p.id)}"><span style="font-size:22px;margin-right:10px">${esc(p.emoji)}</span><div class="grow">${esc(p.name)}${(() => { const pi = pipeInfo(p); return pi ? `<span class="muted tiny"> · ${esc(pipeNow(pi))}</span>` : ''; })()}<div class="bar"><span style="width:${pctOf(p)}%"></span></div></div><span class="chip">${pctOf(p)}%</span><span class="muted pcaret">›</span></button>`).join('')}</section>`;
 }
 function homeView() {
   const now = new Date(), today = todayISO(), tomorrow = L.addDays(today, 1), m = mode();
@@ -260,6 +260,7 @@ ${pi ? pipeSection(p, pi) : `<label class="lbl">Этап проекта</label><
 <div class="chips">${[0, 25, 50, 75, 100].map((v) => `<button class="chipbtn ${p.progress === v ? 'on' : ''}" data-act="p-prog-set" data-v="${v}">${v}%</button>`).join('')}</div>`}
 <label class="lbl">Следующий шаг</label><input data-pfield="next" value="${esc(p.next)}" autocomplete="off" placeholder="Что сделать дальше">
 <label class="lbl">Дедлайн</label><div class="row gap">${dateBtn('data-pfield="deadline"', p.deadline, 'Без дедлайна')}${p.deadline ? `<button class="btn ghost" data-act="p-deadline-clear">Убрать</button><span class="muted">${(() => { const n = L.daysUntil(today, p.deadline); return n < 0 ? 'просрочен' : L.formatDaysLeft(n); })()}</span>` : ''}</div>
+${projectNotes(p)}
 <div class="row space" style="margin-top:18px"><h2 style="margin:0">Задачи</h2><span class="chip">${done} из ${p.tasks.length}</span></div>
 <div class="bar"><span style="width:${p.tasks.length ? Math.round((done / p.tasks.length) * 100) : 0}%"></span></div>
 ${tasks.map((t) => { const late = !t.done && t.due && t.due < today; return `<div class="item ptask ${t.done ? 'done' : ''}"><button class="chk ${t.done ? 'on' : ''}" data-act="toggle-ptask" data-id="${esc(t.id)}" aria-label="Отметить"></button><button class="ttl" data-act="toggle-ptask" data-id="${esc(t.id)}">${esc(t.title)}</button>
@@ -289,14 +290,23 @@ function taskModal(t) {
 /* ---------- Заметки ---------- */
 function noteCards() {
   const q = ui.noteQuery.trim().toLowerCase();
-  const list = S.notes.filter((n) => !q || n.text.toLowerCase().includes(q)).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.createdAt.localeCompare(a.createdAt));
+  const fp = ui.noteProject;
+  const list = S.notes.filter((n) => (!q || n.text.toLowerCase().includes(q)) && (!fp || (fp === '-' ? !n.projectId || !projectById(n.projectId) : n.projectId === fp))).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.createdAt.localeCompare(a.createdAt));
   if (!list.length) return `<div class="empty center">${q ? 'Ничего не найдено' : 'Заметок пока нет'}</div>`;
   return list.map((n) => `<section class="card"><div class="note">${n.pinned ? '<span class="pin">📌</span> ' : ''}${esc(n.text)}</div><div class="row space" style="margin-top:8px"><span class="muted tiny">${L.formatShortRu(n.createdAt.slice(0, 10))}, ${esc(n.createdAt.slice(11, 16))}</span>
-<span><button class="btn small ghost" data-act="note-pin" data-id="${esc(n.id)}">${n.pinned ? 'Открепить' : 'Закрепить'}</button> <button class="btn small ghost danger" data-act="note-del" data-id="${esc(n.id)}">Удалить</button></span></div></section>`).join('');
+<span class="row gap"><select class="nsel" data-note-project="${esc(n.id)}" aria-label="Проект заметки">${projectOptions(n.projectId || '')}</select><button class="btn small ghost" data-act="note-pin" data-id="${esc(n.id)}">${n.pinned ? 'Открепить' : 'Закрепить'}</button> <button class="btn small ghost danger" data-act="note-del" data-id="${esc(n.id)}">Удалить</button></span></div></section>`).join('');
+}
+function refreshNotes() { const l = $('#notelist'); if (l) l.innerHTML = noteCards(); if (ui.modal?.type === 'project') renderModal(); }
+/** Заметки проекта в окне проекта: свои заметки и поле, чтобы добавить новую. */
+function projectNotes(p) {
+  const list = S.notes.filter((n) => n.projectId === p.id).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.createdAt.localeCompare(a.createdAt));
+  return `<div class="row space" style="margin-top:18px"><h2 style="margin:0">Заметки</h2><span class="chip">${list.length}</span></div>
+${list.map((n) => `<div class="pnote"><div class="note">${n.pinned ? '<span class="pin">📌</span> ' : ''}${esc(n.text)}</div><div class="row space"><span class="muted tiny">${L.formatShortRu(n.createdAt.slice(0, 10))}, ${esc(n.createdAt.slice(11, 16))}</span><span><button class="btn small ghost" data-act="note-pin" data-id="${esc(n.id)}">${n.pinned ? 'Открепить' : 'Закрепить'}</button> <button class="btn small ghost danger" data-act="note-del" data-id="${esc(n.id)}">Удалить</button></span></div></div>`).join('') || '<div class="empty">Заметок по проекту пока нет</div>'}
+<form data-form="add-pnote" style="margin-top:10px"><textarea name="text" class="short" placeholder="Новая заметка к проекту" required></textarea><div class="row" style="margin-top:8px;-webkit-justify-content:flex-end;justify-content:flex-end"><button class="btn primary">Сохранить</button></div></form>`;
 }
 function notesView() {
-  return `<section class="card"><form data-form="add-note"><textarea name="text" placeholder="Напиши или нажми «Диктовать»" required></textarea><div class="row gap" style="margin-top:8px"><button type="button" class="btn mic ${ui.rec ? 'rec' : ''}" id="micbtn" data-act="dictate">${ui.rec ? '■ Стоп' : '🎤 Диктовать'}</button><button class="btn primary">Сохранить заметку</button></div></form></section>
-<input type="search" id="notesearch" placeholder="Поиск по заметкам" value="${esc(ui.noteQuery)}" style="margin-bottom:12px"><div id="notelist">${noteCards()}</div>`;
+  return `<section class="card"><form data-form="add-note"><textarea name="text" placeholder="Напиши или нажми «Диктовать»" required></textarea><div class="row gap" style="margin-top:8px"><button type="button" class="btn mic ${ui.rec ? 'rec' : ''}" id="micbtn" data-act="dictate">${ui.rec ? '■ Стоп' : '🎤 Диктовать'}</button><select name="projectId" class="nsel-add" aria-label="Проект">${projectOptions('')}</select><button class="btn primary">Сохранить заметку</button></div></form></section>
+<div class="addrow" style="margin-bottom:12px"><input type="search" id="notesearch" placeholder="Поиск по заметкам" value="${esc(ui.noteQuery)}"><select id="notefilter" aria-label="Фильтр по проекту"><option value="">Все заметки</option><option value="-" ${ui.noteProject === '-' ? 'selected' : ''}>Без проекта</option>${projects().map((p) => `<option value="${esc(p.id)}" ${p.id === ui.noteProject ? 'selected' : ''}>${esc(p.emoji)} ${esc(p.name)}</option>`).join('')}</select></div><div id="notelist">${noteCards()}</div>`;
 }
 /* Диктовка: распознавание речи Safari (работает через Siri). Если его нет или оно не разрешено — подсказываем микрофон клавиатуры. */
 function micBtn(on) { const b = $('#micbtn'); if (b) { b.textContent = on ? '■ Стоп' : '🎤 Диктовать'; b.classList.toggle('rec', on); } }
@@ -747,8 +757,8 @@ const ACTS = {
   'p-prog-set': (d) => { editProject(ui.modal.id, (p) => { p.progress = Number(d.v); }); render(); },
   'p-deadline-clear': () => { editProject(ui.modal.id, (p) => { p.deadline = null; }); render(); },
   'strip-day': (d) => { ui.addDate = d.date; render(); },
-  'note-pin': (d) => { const n = byId(S.notes, d.id); if (n) { n.pinned = !n.pinned; save(); $('#notelist').innerHTML = noteCards(); } },
-  'note-del': (d) => { if (confirm('Удалить заметку?')) { S.notes = S.notes.filter((n) => n.id !== d.id); save(); $('#notelist').innerHTML = noteCards(); } },
+  'note-pin': (d) => { const n = byId(S.notes, d.id); if (n) { n.pinned = !n.pinned; save(); refreshNotes(); } },
+  'note-del': (d) => { if (confirm('Удалить заметку?')) { S.notes = S.notes.filter((n) => n.id !== d.id); save(); refreshNotes(); } },
   'habit-toggle': (d) => {
     const c = S.habits.checks, set = new Set(c[d.date] || []);
     if (set.has(d.id)) set.delete(d.id); else set.add(d.id);
@@ -807,7 +817,8 @@ const FORMS = {
   'add-task': (f, el) => { const v = fd(el); S.tasks.push({ id: uid(), title: v.title.trim(), date: v.date, time: v.time || '', projectId: v.projectId || '', done: false }); ui.addDate = null; },
   'save-task': (f, el) => { const t = byId(S.tasks, el.dataset.id), v = fd(el); if (t) Object.assign(t, { title: v.title.trim(), date: v.date, time: v.time || '', projectId: v.projectId || '' }); ui.modal = null; },
   'quick-note': (f, el) => { S.notes.push({ id: uid(), text: fd(el).text.trim(), createdAt: stamp(), pinned: false }); toast('Заметка сохранена'); },
-  'add-note': (f, el) => { if (ui.rec) ui.rec.finishSoon(); S.notes.push({ id: uid(), text: fd(el).text.trim(), createdAt: stamp(), pinned: false }); },
+  'add-note': (f, el) => { if (ui.rec) ui.rec.finishSoon(); const v = fd(el); S.notes.push({ id: uid(), text: v.text.trim(), createdAt: stamp(), pinned: false, projectId: v.projectId || '' }); },
+  'add-pnote': (f, el) => { if (!ui.modal?.id) return 'skip'; S.notes.push({ id: uid(), text: fd(el).text.trim(), createdAt: stamp(), pinned: false, projectId: ui.modal.id }); toast('Заметка сохранена'); },
   'add-ptask': (f, el) => { const v = fd(el); editProject(ui.modal.id, (p) => p.tasks.push({ id: 'l' + uid(), title: v.title.trim(), done: false, due: null })); },
   'add-habit': (f, el) => { S.habits.list.push({ id: 'h' + uid(), name: fd(el).name.trim() }); },
   'add-fin': (f, el) => { const v = fd(el); S.finance.entries.push({ id: uid(), date: v.date, amount: Number(v.amount), category: v.category, note: v.note.trim() }); toast('Трата добавлена'); },
@@ -875,6 +886,8 @@ document.addEventListener('change', (e) => {
   if (t.dataset.actChange === 'import' && t.files?.[0]) { importBackup(t.files[0]); t.value = ''; return; }
   if (t.dataset.actChange === 'photos' && t.files?.length) { addPhotos(t.files); t.value = ''; return; }
   if (t.dataset.goalStatus) { const g = byId(S.goals, t.dataset.goalStatus); if (g) { g.status = t.value || null; save(); render(); } return; }
+  if (t.dataset.noteProject) { const n = byId(S.notes, t.dataset.noteProject); if (n) { n.projectId = t.value; save(); refreshNotes(); } return; }
+  if (t.id === 'notefilter') { ui.noteProject = t.value; refreshNotes(); return; }
   if (t.dataset.pipeTitle && ui.modal?.type === 'project') { pipeOf(ui.modal.id).title = t.value.trim(); save(); render(); return; }
   if (t.dataset.pfield && ui.modal?.type === 'project') {
     const k = t.dataset.pfield;
