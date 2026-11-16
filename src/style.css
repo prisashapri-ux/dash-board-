@@ -332,3 +332,23 @@ button.item.plink:last-child { border-bottom: 0; }
 .row > .btn { -webkit-flex-shrink: 0; flex-shrink: 0; }
 .evplan { font-size: 14px; color: var(--accent); margin-top: 2px; }
 .planmark { display: inline-block; font-size: 13px; line-height: 18px; padding: 0 6px; border-radius: 8px; border: 1px dashed var(--accent); color: var(--accent); vertical-align: 1px; }
+
+/* Привычки: переключатель неделя/месяц и сетка месяца */
+.hctl .seg.hseg { margin: 0 8px 0 0; padding: 2px; }
+.seg.hseg button { min-height: 44px; padding: 0 14px; font-size: 14px; }
+.hmnav { margin: 4px 0 6px; } .hmnav b { font-size: 17px; } .hmsp { width: 52px; }
+.hmgrid { display: -webkit-box; display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; margin: 0 -8px; }
+.hmgrid > .hrow { -webkit-flex: 1 1 400px; flex: 1 1 400px; min-width: 0; margin: 0 8px; border-bottom: 1px solid var(--line); }
+.hbar { height: 6px; border-radius: 3px; background: var(--card2); margin: 6px 0 4px; overflow: hidden; }
+.hbar i { display: block; height: 100%; background: var(--accent2); border-radius: 3px; }
+.mweek { display: -webkit-box; display: -webkit-flex; display: flex; margin-top: 4px; }
+.mweek > * { -webkit-box-flex: 1; -webkit-flex: 1 1 0; flex: 1 1 0; min-width: 0; margin-right: 4px; }
+.mweek > *:last-child { margin-right: 0; }
+.mhead span { text-align: center; font-size: 13px; color: var(--muted); }
+.mweek button { min-height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--card2); color: var(--text); font-size: 14px; padding: 0; white-space: nowrap; }
+.mweek button.on { background: var(--accent2); color: var(--on-accent); border-color: var(--accent2); font-weight: 600; }
+.mweek button.today { border-color: var(--accent); border-width: 2px; }
+.mweek button:disabled { opacity: .35; }
+@media (max-width: 600px) { .seg.hseg button { padding: 0 10px; } .mweek button { font-size: 13px; } }
+.hhead { -webkit-flex-wrap: wrap; flex-wrap: wrap; } .hhead h2 { margin-right: 10px; }
+@media (max-width: 600px) { .hhead .hctl { width: 100%; margin-top: 6px; } .hhead .hseg { -webkit-flex: 1; flex: 1; } }

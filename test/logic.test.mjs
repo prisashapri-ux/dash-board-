@@ -272,3 +272,15 @@ test('убранный проект не возвращается из лока�
   const m = L.mergeProjects([{ id: 'a', updated: '2026-11-12' }], [{ id: 'pult', updated: '2026-11-15' }, { id: 'b', updated: '2026-11-15' }], ['pult']);
   assert.deepEqual(m.map((p) => p.id), ['a', 'b']);
 });
+
+test('habitMonth: сетка месяца, будущие дни и итог', () => {
+  const checks = { '2026-11-01': ['h'], '2026-11-10': ['h', 'x'], '2026-11-20': ['h'], '2026-10-31': ['h'] };
+  const r = L.habitMonth(checks, 'h', 2026, 11, '2026-11-16');
+  assert.equal(r.weeks[0].filter(Boolean).length, 1); // 1 ноября 2026 — воскресенье
+  assert.equal(r.weeks[0][6].day, 1);
+  assert.equal(r.passed, 16);
+  assert.equal(r.done, 3);
+  assert.equal(r.pct, 19);
+  const d20 = r.weeks.flat().find((d) => d && d.day === 20);
+  assert.ok(d20.on && d20.future);
+});

@@ -20,7 +20,7 @@ function defaults() {
   };
 }
 let S = defaults();
-const ui = { pipeOpen: [], schDay: '', calDay: '', calMonth: '', newsTopic: 'all', nwState: '', tab: 'home', more: 'habits', noteQuery: '', noteProject: '', modal: null, addDate: null, habitEdit: false, routineEdit: false, cityResults: null, wxState: '', lastKey: '', photos: [], ambient: false, lastTouch: Date.now() };
+const ui = { pipeOpen: [], schDay: '', calDay: '', calMonth: '', newsTopic: 'all', nwState: '', tab: 'home', more: 'habits', noteQuery: '', noteProject: '', modal: null, addDate: null, habitEdit: false, habitMonth: '', routineEdit: false, cityResults: null, wxState: '', lastKey: '', photos: [], ambient: false, lastTouch: Date.now() };
 
 function normalize(raw) {
   const d = defaults();
@@ -353,13 +353,27 @@ const stamp = () => { const d = new Date(); return `${L.isoDate(d)}T${L.formatTi
 
 /* ---------- Ещё ---------- */
 function habitsView() {
-  const today = todayISO(), { list, checks } = S.habits;
-  return `<section class="card"><div class="row space"><h2>Привычки</h2><button class="btn small ghost" data-act="habit-edit">${ui.habitEdit ? 'Готово' : 'Изменить'}</button></div>
-${list.map((h) => {
-    const week = L.habitWeek(checks, h.id, today), st = L.habitStreak(checks, h.id, today);
-    return `<div class="hrow"><div class="row space"><b>${ui.habitEdit ? `<input data-hname="${esc(h.id)}" value="${esc(h.name)}">` : esc(h.name)}</b>${ui.habitEdit ? `<button class="btn ghost danger" data-act="habit-del" data-id="${esc(h.id)}">✕</button>` : `<span class="chip">🔥 серия: ${st}</span>`}</div>
+  const today = todayISO(), { list, checks } = S.habits, month = S.settings.habitRange === 'month';
+  const key = ui.habitMonth || today.slice(0, 7), y = Number(key.slice(0, 4)), m = Number(key.slice(5, 7));
+  const shift = (n) => { const d = new Date(y, m - 1 + n, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
+  const seg = `<div class="seg hseg"><button class="${month ? '' : 'on'}" data-act="habit-range" data-k="week">Неделя</button><button class="${month ? 'on' : ''}" data-act="habit-range" data-k="month">Месяц</button></div>`;
+  const nav = month ? `<div class="row space hmnav"><button class="btn" data-act="habit-month" data-k="${shift(-1)}" aria-label="Предыдущий месяц">◀</button><b>${esc(L.MONTHS_RU[m - 1])} ${y}</b>${key < today.slice(0, 7) ? `<button class="btn" data-act="habit-month" data-k="${shift(1)}" aria-label="Следующий месяц">▶</button>` : '<span class="hmsp"></span>'}</div>` : '';
+  const head = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((w) => `<span>${w}</span>`).join('');
+  const del = (h) => `<button class="btn ghost danger" data-act="habit-del" data-id="${esc(h.id)}">✕</button>`;
+  const rows = list.map((h) => {
+    const name = ui.habitEdit ? `<input data-hname="${esc(h.id)}" value="${esc(h.name)}">` : esc(h.name);
+    if (!month) {
+      const week = L.habitWeek(checks, h.id, today), st = L.habitStreak(checks, h.id, today);
+      return `<div class="hrow"><div class="row space"><b>${name}</b>${ui.habitEdit ? del(h) : `<span class="chip">🔥 серия: ${st}</span>`}</div>
 <div class="days">${week.map((d) => `<button class="${d.on ? 'on' : ''} ${d.date === today ? 'today' : ''}" data-act="habit-toggle" data-id="${esc(h.id)}" data-date="${d.date}">${d.weekday}<br>${d.on ? '✓' : '·'}</button>`).join('')}</div></div>`;
-  }).join('') || '<div class="empty">Привычек нет</div>'}
+    }
+    const hm = L.habitMonth(checks, h.id, y, m, today);
+    return `<div class="hrow hmon"><div class="row space"><b>${name}</b>${ui.habitEdit ? del(h) : `<span class="chip">✓ ${hm.done} из ${hm.passed} · ${hm.pct}%</span>`}</div>
+<div class="hbar"><i style="width:${hm.pct}%"></i></div>
+<div class="mdays"><div class="mweek mhead">${head}</div>${hm.weeks.map((w) => `<div class="mweek">${w.map((d) => d ? `<button class="${d.on ? 'on' : ''} ${d.today ? 'today' : ''}" data-act="habit-toggle" data-id="${esc(h.id)}" data-date="${d.date}"${d.future ? ' disabled' : ''}>${d.day}${d.on ? ' ✓' : ''}</button>` : '<span></span>').join('')}</div>`).join('')}</div></div>`;
+  }).join('');
+  return `<section class="card"><div class="row space hhead"><h2>Привычки</h2><div class="row hctl">${seg}<button class="btn small ghost" data-act="habit-edit">${ui.habitEdit ? 'Готово' : 'Изменить'}</button></div></div>
+${nav}${rows ? (month ? `<div class="hmgrid">${rows}</div>` : rows) : '<div class="empty">Привычек нет</div>'}
 <form data-form="add-habit" class="addrow" style="margin-top:12px"><input class="wide" name="name" placeholder="Новая привычка" autocomplete="off" required><button class="btn primary">Добавить</button></form></section>`;
 }
 function financeView() {
@@ -837,6 +851,8 @@ const ACTS = {
     if (set.size) c[d.date] = [...set]; else delete c[d.date];
     save(); render();
   },
+  'habit-range': (d) => { S.settings.habitRange = d.k; ui.habitMonth = ''; save(); render(); },
+  'habit-month': (d) => { ui.habitMonth = d.k; render(); },
   'habit-edit': () => { ui.habitEdit = !ui.habitEdit; render(); },
   'habit-del': (d) => { if (confirm('Удалить привычку вместе с отметками?')) { S.habits.list = S.habits.list.filter((h) => h.id !== d.id); save(); render(); } },
   more: (d) => { ui.more = d.k; render(); },

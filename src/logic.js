@@ -3,7 +3,7 @@
 export const STAGES = ['Идея', 'План', 'В работе', 'Проверка', 'Готово'];
 export const CATEGORIES = ['Еда', 'Кафе', 'Дом', 'Транспорт', 'Здоровье', 'Развлечения', 'Проекты', 'Другое'];
 export const DEFAULT_HABITS = ['Зал', 'Прогулка с собаками', 'Вода', 'Сон 8 ч'];
-export const DEFAULT_SETTINGS = {
+export const DEFAULT_SETTINGS = { habitRange: 'week',
   city: 'Сочи', lat: 43.585, lon: 39.72,
   morningFrom: 5, dayFrom: 12, eveningFrom: 18,
   night: 'auto', mode: 'auto', twitch: '', youtube: '', claudeGist: '',
@@ -130,6 +130,20 @@ export function habitStreak(checks, habitId, today) {
 }
 export function habitWeek(checks, habitId, today) {
   return Array.from({ length: 7 }, (_, i) => { const date = addDays(today, i - 6); return { date, weekday: weekdayShort(date), on: (checks[date] || []).includes(habitId) }; });
+}
+
+/** Месяц привычки: недели с понедельника (чужие дни месяца = null) и итог «отмечено N из прошедших дней». */
+export function habitMonth(checks, habitId, y, m, today) {
+  const key = `${y}-${p2(m)}`, has = (d) => (checks[d] || []).includes(habitId);
+  let done = 0, passed = 0;
+  const weeks = monthGrid(y, m).map((w) => w.map((date) => {
+    if (date.slice(0, 7) !== key) return null;
+    const on = has(date), future = date > today;
+    if (!future) passed++;
+    if (on) done++;
+    return { date, day: Number(date.slice(8)), on, future, today: date === today };
+  }));
+  return { weeks, done, passed, pct: passed ? Math.round((done / passed) * 100) : 0 };
 }
 
 /** Итоги дня: задачи, привычки, траты против дневного бюджета. */
