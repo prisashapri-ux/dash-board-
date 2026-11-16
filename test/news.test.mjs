@@ -128,3 +128,22 @@ test('перевод: только английские тексты, кэш, о
   assert.ok(!asked.includes('Short summary here'));
   assert.deepEqual(Object.keys(r.cache).sort(), ['Agent framework', 'Claude gets a new model', 'Short summary here']);
 });
+test('GitHub: клоны одного репозитория разных авторов отсекаются', () => {
+  const r = (owner, name, stars, desc) => ({ full_name: `${owner}/${name}`, name, owner: { login: owner }, html_url: `https://github.com/${owner}/${name}`, stargazers_count: stars, created_at: '2026-11-14T00:00:00Z', description: desc });
+  const spam = 'AI Manus is a general-purpose AI Agent system';
+  const out = N.githubRepos({ items: [
+    r('violet', 'ai--manus2.0', 374, spam), r('tracker', 'ai--manus2.0', 372, spam), r('ultimate', 'ai--manus2.0', 370, spam),
+    r('good', 'agent-kit', 300, 'Toolkit for building agents with Claude'),
+    r('copy', 'agent-kit', 10, 'Toolkit for building agents with Claude'),
+    r('other', 'mcp-server', 200, 'Toolkit for building agents with Claude'), r('dup', 'kit2', 5, 'Different text entirely here ok'),
+    r('fine', 'llm-notes', 50, 'Notes about LLM'),
+  ] });
+  assert.deepEqual(out.map((x) => x.link), ['https://github.com/fine/llm-notes', 'https://github.com/dup/kit2']); // 3 одинаковых описания — спам целиком
+  assert.equal(out[0].owner, 'fine');
+  assert.deepEqual(N.githubRepos({ items: [r('a', 'x', 9, 'Same description for two repos'), r('b', 'y', 3, 'Same description for two repos')] }).map((x) => x.owner), ['a']);
+});
+test('повторы: одинаковое описание у разных заголовков', () => {
+  const now = Date.parse('2026-11-14T08:00:00Z'), d = 'Одинаковое длинное описание новости, которое совпадает у двух записей.';
+  const r = N.buildNews([{ topic: 'github', title: 'a/x', link: 'https://a', date: new Date(now - 3600000).toISOString(), desc: d }, { topic: 'github', title: 'b/y', link: 'https://b', date: new Date(now - 7200000).toISOString(), desc: d }], now);
+  assert.equal(r.length, 1);
+});

@@ -61,7 +61,7 @@ export function titleStems(title) {
 }
 /** Одна и та же новость: совпадает ссылка, заголовок или почти все значимые слова. */
 export function sameStory(a, b) {
-  if (a.link === b.link || a.key === b.key) return true;
+  if (a.link === b.link || a.key === b.key || (a.desc && a.desc === b.desc)) return true;
   if (Math.min(a.stems.size, b.stems.size) < 3) return false;
   let common = 0; for (const w of a.stems) if (b.stems.has(w)) common++;
   return common / (a.stems.size + b.stems.size - common) > 0.6; // доля общих слов среди всех
@@ -77,20 +77,37 @@ export function buildNews(items, now = Date.now(), { maxAgeH = 48, perTopic = 30
     .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
   for (const x of fresh) {
     if ((count[x.topic] || 0) >= perTopic) continue;
-    const c = { link: x.link.replace(/[?#].*$/, '').replace(/\/$/, ''), key: norm(x.title), stems: titleStems(x.title) };
+    const d = norm(x.desc || ''), c = { link: x.link.replace(/[?#].*$/, '').replace(/\/$/, ''), key: norm(x.title), stems: titleStems(x.title), desc: d.length >= 40 ? d : '' };
     if (kept.some((k) => sameStory(c, k))) continue;
     kept.push(c); count[x.topic] = (count[x.topic] || 0) + 1; out.push(x);
   }
   return out;
 }
 
-/** Новые репозитории из ответа GitHub Search API. */
+/**
+ * Новые репозитории из ответа GitHub Search API без спама: клоны с одним именем или описанием
+ * у разных авторов (накрутка звёзд) убираются целиком, если их 3 и больше; из пары остаётся тот, у кого больше звёзд.
+ */
 export function githubRepos(j) {
-  return (j && Array.isArray(j.items) ? j.items : []).filter((r) => r && r.full_name && /^https:\/\/github\.com\//.test(r.html_url || '')).map((r) => ({
-    title: `${r.full_name} · ★ ${Number(r.stargazers_count || 0).toLocaleString('ru-RU')}`,
-    link: r.html_url, date: r.created_at || '',
-    desc: cleanText([r.description || '', r.language ? `(${r.language})` : ''].join(' '), 220),
-  }));
+  const list = (j && Array.isArray(j.items) ? j.items : []).filter((r) => r && r.full_name && !r.fork && /^https:\/\/github\.com\//.test(r.html_url || ''));
+  const nameKey = (r) => String(r.name || r.full_name.split('/')[1] || '').toLowerCase();
+  const descKey = (r) => norm(r.description || '');
+  const count = (key) => { const m = {}; for (const r of list) { const k = key(r); if (k) m[k] = (m[k] || 0) + 1; } return m; };
+  const byName = count(nameKey), byDesc = count(descKey);
+  const spam = (r) => byName[nameKey(r)] >= 3 || (descKey(r).length >= 20 && byDesc[descKey(r)] >= 3);
+  const seen = new Set(), out = [];
+  for (const r of [...list].sort((a, b) => (b.stargazers_count || 0) - (a.stargazers_count || 0))) {
+    if (spam(r)) continue;
+    const keys = [nameKey(r), descKey(r).length >= 20 ? 'd:' + descKey(r) : ''].filter(Boolean);
+    if (keys.some((k) => seen.has(k))) continue;
+    keys.forEach((k) => seen.add(k));
+    out.push({
+      title: `${r.full_name} · ★ ${Number(r.stargazers_count || 0).toLocaleString('ru-RU')}`,
+      link: r.html_url, date: r.created_at || '', owner: (r.owner && r.owner.login) || r.full_name.split('/')[0],
+      desc: cleanText([r.description || '', r.language ? `(${r.language})` : ''].join(' '), 220),
+    });
+  }
+  return out;
 }
 /** ID YouTube-канала со страницы канала. */
 export function youtubeChannelId(html) {
