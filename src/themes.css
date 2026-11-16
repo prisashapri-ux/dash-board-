@@ -50,6 +50,7 @@ body.theme-aurora:not(.night) .clock { color: #f6f4ff; text-shadow: 0 0 40px rgb
 body.theme-aurora .wx-t { font-weight: 200; }
 body.theme-aurora .seg { border-radius: 999px; padding: 4px; }
 body.theme-aurora .seg button { border-radius: 999px; }
+body.theme-aurora .seg.wrap { border-radius: 24px; }
 body.theme-aurora:not(.night) .seg button.on, body.theme-aurora:not(.night) .btn.primary { background: -webkit-linear-gradient(0deg, #8b7bff, #4fd6e6); background: linear-gradient(90deg, #8b7bff, #4fd6e6); border-color: transparent; box-shadow: 0 8px 24px -8px rgba(139,123,255,.8); }
 body.theme-aurora .btn { border-radius: 999px; }
 body.theme-aurora:not(.night) .bar > span { background: -webkit-linear-gradient(0deg, #8b7bff, #3ee6c4); background: linear-gradient(90deg, #8b7bff, #3ee6c4); }

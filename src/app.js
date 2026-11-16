@@ -293,7 +293,7 @@ function noteCards() {
   const fp = ui.noteProject;
   const list = S.notes.filter((n) => (!q || n.text.toLowerCase().includes(q)) && (!fp || (fp === '-' ? !n.projectId || !projectById(n.projectId) : n.projectId === fp))).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.createdAt.localeCompare(a.createdAt));
   if (!list.length) return `<div class="empty center">${q ? 'Ничего не найдено' : 'Заметок пока нет'}</div>`;
-  return list.map((n) => `<section class="card"><div class="note">${n.pinned ? '<span class="pin">📌</span> ' : ''}${esc(n.text)}</div><div class="row space" style="margin-top:8px"><span class="muted tiny">${L.formatShortRu(n.createdAt.slice(0, 10))}, ${esc(n.createdAt.slice(11, 16))}</span>
+  return list.map((n) => `<section class="card"><div class="note">${n.pinned ? '<span class="pin">📌</span> ' : ''}${esc(n.text)}</div><div class="row space nmeta" style="margin-top:8px"><span class="muted tiny">${L.formatShortRu(n.createdAt.slice(0, 10))}, ${esc(n.createdAt.slice(11, 16))}</span>
 <span class="row gap"><select class="nsel" data-note-project="${esc(n.id)}" aria-label="Проект заметки">${projectOptions(n.projectId || '')}</select><button class="btn small ghost" data-act="note-pin" data-id="${esc(n.id)}">${n.pinned ? 'Открепить' : 'Закрепить'}</button> <button class="btn small ghost danger" data-act="note-del" data-id="${esc(n.id)}">Удалить</button></span></div></section>`).join('');
 }
 function refreshNotes() { const l = $('#notelist'); if (l) l.innerHTML = noteCards(); if (ui.modal?.type === 'project') renderModal(); }
@@ -305,7 +305,7 @@ ${list.map((n) => `<div class="pnote"><div class="note">${n.pinned ? '<span clas
 <form data-form="add-pnote" style="margin-top:10px"><textarea name="text" class="short" placeholder="Новая заметка к проекту" required></textarea><div class="row" style="margin-top:8px;-webkit-justify-content:flex-end;justify-content:flex-end"><button class="btn primary">Сохранить</button></div></form>`;
 }
 function notesView() {
-  return `<section class="card"><form data-form="add-note"><textarea name="text" placeholder="Напиши или нажми «Диктовать»" required></textarea><div class="row gap" style="margin-top:8px"><button type="button" class="btn mic ${ui.rec ? 'rec' : ''}" id="micbtn" data-act="dictate">${ui.rec ? '■ Стоп' : '🎤 Диктовать'}</button><select name="projectId" class="nsel-add" aria-label="Проект">${projectOptions('')}</select><button class="btn primary">Сохранить заметку</button></div></form></section>
+  return `<section class="card"><form data-form="add-note"><textarea name="text" placeholder="Напиши или нажми «Диктовать»" required></textarea><div class="row gap nrow" style="margin-top:8px"><button type="button" class="btn mic ${ui.rec ? 'rec' : ''}" id="micbtn" data-act="dictate">${ui.rec ? '■ Стоп' : '🎤 Диктовать'}</button><select name="projectId" class="nsel-add" aria-label="Проект">${projectOptions('')}</select><button class="btn primary">Сохранить заметку</button></div></form></section>
 <div class="addrow" style="margin-bottom:12px"><input type="search" id="notesearch" placeholder="Поиск по заметкам" value="${esc(ui.noteQuery)}"><select id="notefilter" aria-label="Фильтр по проекту"><option value="">Все заметки</option><option value="-" ${ui.noteProject === '-' ? 'selected' : ''}>Без проекта</option>${projects().map((p) => `<option value="${esc(p.id)}" ${p.id === ui.noteProject ? 'selected' : ''}>${esc(p.emoji)} ${esc(p.name)}</option>`).join('')}</select></div><div id="notelist">${noteCards()}</div>`;
 }
 /* Диктовка: распознавание речи Safari (работает через Siri). Если его нет или оно не разрешено — подсказываем микрофон клавиатуры. */
@@ -613,7 +613,9 @@ function applyTheme() {
   const night = L.isNight(S.settings, hour());
   document.body.classList.toggle('night', night);
   for (const [k] of L.THEMES) if (k) document.body.classList.toggle('theme-' + k, S.settings.theme === k);
-  const meta = document.querySelector('meta[name=theme-color]'); if (meta) meta.content = night ? '#120a0a' : ({ aurora: '#070a18', bento: '#f3eee4', paper: '#f2ece0', neon: '#0a0614', crt: '#040904' })[S.settings.theme] || '#0f1115';
+  const meta = document.querySelector('meta[name=theme-color]'); const bg = night ? '#120a0a' : ({ aurora: '#070a18', bento: '#f3eee4', paper: '#f2ece0', neon: '#0a0614', crt: '#040904' })[S.settings.theme] || '#0f1115';
+  if (meta) meta.content = bg;
+  document.documentElement.style.background = bg; // цвет под страницей при прокрутке за край
   const dim = $('#dim'), a = night ? Number(S.settings.nightDim) || 0 : 0;
   if (dim) { dim.style.opacity = String(a / 100); dim.hidden = !a; }
   setKeepAwake(S.settings.keepAwake);

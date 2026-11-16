@@ -311,3 +311,17 @@ button.item.plink:last-child { border-bottom: 0; }
   .tabbar { overflow-x: auto; -webkit-overflow-scrolling: touch; } .tabbar button { -webkit-flex: 0 0 64px; flex: 0 0 64px; }
 }
 .grid2 .evrow .evtime { width: 104px; }
+
+/* Заметки: на узком экране кнопки и выбор проекта переносятся на второй ряд, а не налезают друг на друга. */
+.nrow .btn, .nmeta .btn { white-space: nowrap; }
+.nrow, .nmeta, .nmeta > .row { -webkit-flex-wrap: wrap; flex-wrap: wrap; }
+.nrow > *, .nmeta > .row > * { margin-top: 4px; margin-bottom: 4px; }
+.nmeta .muted { white-space: nowrap; margin-right: 8px; }
+@media (max-width: 700px) {
+  .nrow .nsel-add { -webkit-box-ordinal-group: 4; -webkit-order: 3; order: 3; -webkit-flex: 1 1 100%; flex: 1 1 100%; max-width: none; margin-right: 0; }
+  .nrow > .btn { -webkit-flex: 1 1 auto; flex: 1 1 auto; }
+  .nrow > .btn.mic { margin-right: 0; }
+  .nmeta > .row { -webkit-flex: 1 1 100%; flex: 1 1 100%; }
+  .nmeta .nsel { -webkit-flex: 1 1 100%; flex: 1 1 100%; max-width: none; margin-right: 0; }
+}
+.row > .btn { -webkit-flex-shrink: 0; flex-shrink: 0; }
