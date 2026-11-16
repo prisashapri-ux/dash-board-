@@ -265,3 +265,19 @@ table.sch tr.cnt td.low { color: var(--bad); font-weight: 700; }
 .legend span { margin: 0 14px 6px 0; }
 .lg { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; border: 1px solid var(--line); }
 .lg.full { background: rgba(143, 184, 222, .35); } .lg.part { background: rgba(143, 184, 222, .15); } .lg.off { background: var(--card2); } .lg.none { background: transparent; } .lg.low { background: var(--bad); }
+/* Этапы производства ролика или стрима */
+.pipeline { margin: 8px 0 6px; padding: 8px 10px; border-radius: 12px; background: var(--card2); }
+.steps.pipe { margin: 6px 0; }
+.steps.pipe i { height: 8px; }
+.steps.pipe.big i { height: 10px; border-radius: 5px; }
+.steps i.cur { background: var(--accent2); }
+.pstage { border: 1px solid var(--line); border-radius: 14px; margin-top: 8px; padding: 0 8px; background: var(--card); }
+.pstage.cur { border-color: var(--accent2); }
+.pstage-h { display: -webkit-box; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; width: 100%; min-height: 52px; background: none; border: 0; color: var(--text); font-size: 17px; font-weight: 600; text-align: left; padding: 0; }
+.pstage.complete .pstage-h { color: var(--muted); font-weight: 500; }
+.pnum { -webkit-flex: 0 0 32px; flex: 0 0 32px; width: 32px; height: 32px; line-height: 32px; border-radius: 16px; text-align: center; background: var(--card2); margin-right: 10px; font-size: 15px; }
+.pstage.cur .pnum { background: var(--accent2); color: var(--on-accent); }
+.pstage.complete .pnum { color: var(--accent2); }
+.pcaret { width: 24px; text-align: center; margin-left: 4px; }
+.pall { margin: 4px 0 10px 44px; min-height: 44px; }
+hr.sep { border: 0; border-top: 1px solid var(--line); margin: 18px 0 6px; }

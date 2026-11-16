@@ -247,3 +247,23 @@ test('погода с сайта Пульта: только тот же горо
   assert.equal(L.parseSiteWeather(j, 43.585, 39.72, now + 4 * 3600000), null);
   assert.equal(L.parseSiteWeather(null, 1, 1, now), null);
 });
+
+test('этапы производства: текущий этап, процент, сброс цикла', () => {
+  for (const id of ['vlog', 'gamevideo', 'video2d', 'video2d-ru', 'twitch']) assert.ok(L.PIPELINES[id], id);
+  const def = L.PIPELINES.vlog;
+  let st = L.pipelineStatus(def, []);
+  assert.equal(st.current, 0); assert.equal(st.done, 0); assert.equal(st.stages.length, 8);
+  const first = def.stages[0][1].map((t) => L.pipeKey('Идея', t));
+  st = L.pipelineStatus(def, [...first, L.pipeKey('Съёмка', 'Снять по списку'), 'старое|удалённый пункт']);
+  assert.equal(st.current, 1);
+  assert.equal(st.stages[0].complete, true);
+  assert.equal(st.stages[2].done, 1);
+  assert.equal(st.done, 4);
+  const all = def.stages.flatMap(([n, items]) => items.map((t) => L.pipeKey(n, t)));
+  assert.equal(L.pipelineStatus(def, all).finished, true);
+  assert.equal(L.pipelineStatus(def, all).pct, 100);
+  const r = L.resetPipeline({ title: 'Поездка в горы', checks: all, started: '2026-11-01T00:00:00Z' }, '2026-11-16T10:00:00Z');
+  assert.deepEqual(r.checks, []); assert.equal(r.title, '');
+  assert.equal(r.log.length, 1); assert.equal(r.log[0].title, 'Поездка в горы');
+  assert.equal(L.resetPipeline(r, '2026-11-16T11:00:00Z').log.length, 1, 'пустой цикл в историю не идёт');
+});

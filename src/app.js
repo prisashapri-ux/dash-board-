@@ -15,12 +15,12 @@ function defaults() {
     finance: { entries: [], budget: 0 },
     settings: { ...L.DEFAULT_SETTINGS },
     projects: [], remote: { updated: null, projects: [] }, weather: null, claude: null,
-    goals: [], countdowns: [], journal: {}, shopping: [], menu: ['', '', '', '', '', '', ''], rates: null, news: null, savedNews: [], schedule: null,
+    goals: [], countdowns: [], journal: {}, shopping: [], menu: ['', '', '', '', '', '', ''], rates: null, news: null, savedNews: [], schedule: null, pipes: {},
     routines: { morning: L.DEFAULT_ROUTINES.morning.map((title, i) => ({ id: 'rm' + (i + 1), title })), evening: L.DEFAULT_ROUTINES.evening.map((title, i) => ({ id: 're' + (i + 1), title })), checks: {} },
   };
 }
 let S = defaults();
-const ui = { schDay: '', newsTopic: 'all', nwState: '', tab: 'home', more: 'habits', noteQuery: '', modal: null, addDate: null, habitEdit: false, routineEdit: false, cityResults: null, wxState: '', lastKey: '', photos: [], ambient: false, lastTouch: Date.now() };
+const ui = { pipeOpen: [], schDay: '', newsTopic: 'all', nwState: '', tab: 'home', more: 'habits', noteQuery: '', modal: null, addDate: null, habitEdit: false, routineEdit: false, cityResults: null, wxState: '', lastKey: '', photos: [], ambient: false, lastTouch: Date.now() };
 
 function normalize(raw) {
   const d = defaults();
@@ -36,6 +36,7 @@ function normalize(raw) {
     goals: Array.isArray(r.goals) ? r.goals : [], countdowns: Array.isArray(r.countdowns) ? r.countdowns : [],
     journal: r.journal && typeof r.journal === 'object' ? r.journal : {}, shopping: Array.isArray(r.shopping) ? r.shopping : [],
     menu: Array.isArray(r.menu) && r.menu.length === 7 ? r.menu : d.menu,
+    pipes: r.pipes && typeof r.pipes === 'object' && !Array.isArray(r.pipes) ? r.pipes : {},
     savedNews: Array.isArray(r.savedNews) ? r.savedNews.filter((x) => x && /^https?:\/\//.test(x.link || '')) : [],
     routines: { morning: Array.isArray(r.routines?.morning) ? r.routines.morning : d.routines.morning, evening: Array.isArray(r.routines?.evening) ? r.routines.evening : d.routines.evening, checks: r.routines?.checks || {} },
   };
@@ -70,6 +71,38 @@ function ring(pct) {
 }
 const stageBar = (stage) => `<div class="steps" title="${esc(stage)}">${L.STAGES.map((s, i) => `<i class="${i <= L.STAGES.indexOf(stage) ? 'on' : ''}"></i>`).join('')}</div>`;
 const money = L.formatMoney;
+/* Этапы производства ролика или стрима: шаблон из L.PIPELINES, отметки только на устройстве. */
+const pipeOf = (id) => S.pipes[id] || (S.pipes[id] = { title: '', checks: [], started: null, log: [] });
+function pipeInfo(p) {
+  const def = L.PIPELINES[p.id]; if (!def) return null;
+  const pipe = S.pipes[p.id] || { title: '', checks: [], log: [] };
+  return { def, pipe, st: L.pipelineStatus(def, pipe.checks) };
+}
+const pipeNow = (pi) => (pi.st.finished ? 'Цикл пройден' : `${pi.st.current + 1}/${pi.st.stages.length} · ${pi.st.stages[pi.st.current].name}`);
+function pipeLine(pi) {
+  const u = pi.def.unit === 'стрим' ? 'Стрим' : 'Ролик';
+  return `<div class="pipeline"><div class="row space tiny"><span class="muted">${u}${pi.pipe.title ? ': ' + esc(pi.pipe.title) : ''}</span><span class="muted">${pi.st.pct}%</span></div>
+<div class="steps pipe">${pi.st.stages.map((s, i) => `<i class="${s.complete ? 'on' : i === pi.st.current ? 'cur' : ''}"></i>`).join('')}</div>
+<div>Сейчас: <b>${esc(pipeNow(pi))}</b></div></div>`;
+}
+function pipeSection(p, pi) {
+  const { def, pipe, st } = pi, isStream = def.unit === 'стрим';
+  const title = isStream ? 'Цикл стрима' : 'Этапы ролика', next = isStream ? 'Новый стрим' : 'Новый ролик';
+  const stages = st.stages.map((s, i) => {
+    const open = i === st.current || ui.pipeOpen.includes(s.name);
+    const mark = s.complete ? '✓' : String(i + 1);
+    return `<div class="pstage ${s.complete ? 'complete' : ''} ${i === st.current ? 'cur' : ''}"><button class="pstage-h" data-act="pipe-open" data-k="${esc(s.name)}"><span class="pnum">${mark}</span><span class="grow">${esc(s.name)}</span><span class="chip">${s.done}/${s.total}</span><span class="muted pcaret">${open ? '▾' : '▸'}</span></button>
+${open ? s.items.map((x) => `<div class="item ptask ${x.done ? 'done' : ''}"><button class="chk ${x.done ? 'on' : ''}" data-act="pipe-toggle" data-k="${esc(x.key)}" aria-label="Отметить"></button><button class="ttl" data-act="pipe-toggle" data-k="${esc(x.key)}">${esc(x.text)}</button></div>`).join('') + (s.complete ? '' : `<button class="btn small ghost pall" data-act="pipe-all" data-k="${esc(s.name)}">✓ Весь этап</button>`) : ''}</div>`;
+  }).join('');
+  const log = (pipe.log || []).slice(0, 3);
+  return `<div class="row space" style="margin-top:6px"><h2 style="margin:0">${title}</h2><span class="chip">${st.done} из ${st.total}</span></div>
+<div class="muted">Сейчас: <b>${esc(pipeNow(pi))}</b></div>
+<label class="lbl">${isStream ? 'Стрим' : 'Ролик'}</label><input data-pipe-title="1" value="${esc(pipe.title || '')}" autocomplete="off" placeholder="${isStream ? 'Тема или игра стрима' : 'Рабочее название ролика'}">
+<div class="steps pipe big">${st.stages.map((s, i) => `<i class="${s.complete ? 'on' : i === st.current ? 'cur' : ''}"></i>`).join('')}</div>
+${stages}
+<div class="row space wrap" style="margin-top:10px"><span class="muted tiny">${(pipe.log || []).length ? `Готово: ${pipe.log.length}. Последние: ${log.map((x) => esc(x.title || 'без названия')).join(', ')}` : 'Когда цикл пройден, начни новый: отметки сбросятся.'}</span><button class="btn ${st.finished ? 'primary' : ''}" data-act="pipe-reset">${next}</button></div>
+<hr class="sep">`;
+}
 
 /* ---------- Главная ---------- */
 function weatherCard() {
@@ -101,7 +134,7 @@ function claudeCard() {
 }
 function projectsNext() {
   const top = L.topProjects(projects(), 3);
-  return `<section class="card"><h2>Главные проекты</h2>${top.map((p) => `<div class="item"><div class="grow"><div>${esc(p.emoji)} <b>${esc(p.name)}</b></div><div class="muted">Дальше: ${esc(p.next || '—')}</div></div><span class="chip">${p.progress}%</span></div>`).join('') || '<div class="empty">Нет активных проектов</div>'}</section>`;
+  return `<section class="card"><h2>Главные проекты</h2>${top.map((p) => `<div class="item"><div class="grow"><div>${esc(p.emoji)} <b>${esc(p.name)}</b></div><div class="muted">${(() => { const pi = pipeInfo(p); return pi ? `${pi.def.unit === 'стрим' ? 'Стрим' : 'Ролик'}: ${esc(pipeNow(pi))} · ` : ''; })()}Дальше: ${esc(p.next || '—')}</div></div><span class="chip">${p.progress}%</span></div>`).join('') || '<div class="empty">Нет активных проектов</div>'}</section>`;
 }
 function projectsSummary() {
   return `<section class="card"><h2>Проекты</h2>${projects().map((p) => `<div class="item"><span style="font-size:22px;margin-right:10px">${esc(p.emoji)}</span><div class="grow">${esc(p.name)}<div class="bar"><span style="width:${p.progress}%"></span></div></div><span class="chip">${p.progress}%</span></div>`).join('')}</section>`;
@@ -205,11 +238,11 @@ ${list.length ? list.map((x) => newsItem(x, false)).join('') : S.news ? '<div cl
 /* ---------- Проекты ---------- */
 function projectsView() {
   return `<div class="pgrid">${projects().map((p) => {
-    const st = L.projectTaskStats(p);
+    const st = L.projectTaskStats(p), pi = pipeInfo(p);
     return `<button class="pcard" data-act="open-project" data-id="${esc(p.id)}"><div class="row"><span class="em">${esc(p.emoji)}</span><div class="grow"><div class="pname">${esc(p.name)}</div>${p.subtitle ? `<div class="psub">${esc(p.subtitle)}</div>` : ''}</div><b>${p.progress}%</b></div>
 ${stageBar(p.stage)}<div class="row space tiny muted"><span>${esc(p.stage)}</span><span>Задач: ${st.done}/${st.total}</span></div>
 <div class="bar"><span style="width:${p.progress}%"></span></div>
-<div>Дальше: <b>${esc(p.next || '—')}</b></div>${p.deadline ? `<div class="muted tiny">Дедлайн: ${L.formatShortRu(p.deadline)}</div>` : ''}</button>`;
+${pi ? pipeLine(pi) : ''}<div>Дальше: <b>${esc(p.next || '—')}</b></div>${p.deadline ? `<div class="muted tiny">Дедлайн: ${L.formatShortRu(p.deadline)}</div>` : ''}</button>`;
   }).join('')}</div>`;
 }
 /** Кнопка с датой: настоящий выбор даты лежит прозрачно поверх, так на iPad открывается родное колесо дат. */
@@ -221,7 +254,8 @@ function projectModal(p) {
   const tasks = [...p.tasks].sort((a, b) => (a.done ? 1 : 0) - (b.done ? 1 : 0));
   return `<div class="sheet psheet"><div class="sheet-head"><button class="btn back" data-act="close-modal" aria-label="Назад">‹ Назад</button><div class="grow"><h2>${esc(p.emoji)} ${esc(p.name)}</h2>${p.subtitle ? `<div class="muted">${esc(p.subtitle)}</div>` : ''}</div><button class="btn" data-act="close-modal">Готово</button></div>
 <div class="sheet-body">
-<label class="lbl">Этап</label><div class="seg stages">${L.STAGES.map((s) => `<button class="${s === p.stage ? 'on' : ''}" data-act="p-stage" data-v="${esc(s)}">${esc(s)}</button>`).join('')}</div>
+${(() => { const pi = pipeInfo(p); return pi ? pipeSection(p, pi) : ''; })()}
+<label class="lbl">Этап проекта</label><div class="seg stages">${L.STAGES.map((s) => `<button class="${s === p.stage ? 'on' : ''}" data-act="p-stage" data-v="${esc(s)}">${esc(s)}</button>`).join('')}</div>
 <label class="lbl">Прогресс</label><div class="progrow"><button class="btn big-btn" data-act="p-prog" data-d="-10" aria-label="Меньше на 10">−</button><div class="grow"><div class="progval">${p.progress}%</div><div class="bar big"><span style="width:${p.progress}%"></span></div></div><button class="btn big-btn" data-act="p-prog" data-d="10" aria-label="Больше на 10">+</button></div>
 <div class="chips">${[0, 25, 50, 75, 100].map((v) => `<button class="chipbtn ${p.progress === v ? 'on' : ''}" data-act="p-prog-set" data-v="${v}">${v}%</button>`).join('')}</div>
 <label class="lbl">Следующий шаг</label><input data-pfield="next" value="${esc(p.next)}" autocomplete="off" placeholder="Что сделать дальше">
@@ -472,7 +506,7 @@ function moreView() {
 
 /* ---------- Резервная копия ---------- */
 function backupObject() {
-  return { app: 'pult', version: 1, exportedAt: new Date().toISOString(), data: { tasks: S.tasks, notes: S.notes, habits: S.habits, finance: S.finance, settings: S.settings, projects: S.projects, goals: S.goals, countdowns: S.countdowns, journal: S.journal, routines: S.routines, shopping: S.shopping, menu: S.menu, savedNews: S.savedNews } };
+  return { app: 'pult', version: 1, exportedAt: new Date().toISOString(), data: { tasks: S.tasks, notes: S.notes, habits: S.habits, finance: S.finance, settings: S.settings, projects: S.projects, goals: S.goals, countdowns: S.countdowns, journal: S.journal, routines: S.routines, shopping: S.shopping, menu: S.menu, savedNews: S.savedNews, pipes: S.pipes } };
 }
 let blobUrl = '';
 function backupUrl() {
@@ -701,7 +735,11 @@ const ACTS = {
   'edit-task': (d) => { ui.modal = { type: 'task', id: d.id }; renderModal(); },
   'del-task': (d) => { S.tasks = S.tasks.filter((t) => t.id !== d.id); ui.modal = null; save(); render(); },
   'close-modal': () => { ui.modal = null; render(); },
-  'open-project': (d) => { ui.modal = { type: 'project', id: d.id }; renderModal(); },
+  'open-project': (d) => { ui.modal = { type: 'project', id: d.id }; ui.pipeOpen = []; renderModal(); },
+  'pipe-toggle': (d) => { const pp = pipeOf(ui.modal.id), set = new Set(pp.checks); if (set.has(d.k)) set.delete(d.k); else set.add(d.k); pp.checks = [...set]; if (!pp.started) pp.started = new Date().toISOString(); save(); renderModal(); render(); },
+  'pipe-all': (d) => { const def = L.PIPELINES[ui.modal.id], stg = def && def.stages.find((x) => x[0] === d.k); if (!stg) return; const pp = pipeOf(ui.modal.id); pp.checks = [...new Set([...pp.checks, ...stg[1].map((t) => L.pipeKey(stg[0], t))])]; if (!pp.started) pp.started = new Date().toISOString(); save(); renderModal(); render(); },
+  'pipe-open': (d) => { ui.pipeOpen = ui.pipeOpen.includes(d.k) ? ui.pipeOpen.filter((x) => x !== d.k) : [...ui.pipeOpen, d.k]; renderModal(); },
+  'pipe-reset': () => { const id = ui.modal.id, def = L.PIPELINES[id], pp = pipeOf(id); if (!def) return; const st = L.pipelineStatus(def, pp.checks); if (!st.finished && (pp.checks.length || pp.title) && !confirm(`Начать ${def.unit === 'стрим' ? 'новый стрим' : 'новый ролик'}? Отметки текущего сбросятся.`)) return; S.pipes[id] = L.resetPipeline(pp); ui.pipeOpen = []; save(); renderModal(); render(); },
   'toggle-ptask': (d) => { editProject(ui.modal.id, (p) => { const t = byId(p.tasks, d.id); if (t) t.done = !t.done; }); renderModal(); render(); },
   'del-ptask': (d) => { const t = byId(projectById(ui.modal.id)?.tasks || [], d.id); if (t && !confirm(`Удалить задачу «${t.title}»?`)) return; editProject(ui.modal.id, (p) => { p.tasks = p.tasks.filter((x) => x.id !== d.id); }); render(); },
   'p-stage': (d) => { editProject(ui.modal.id, (p) => { p.stage = d.v; if (d.v === 'Готово') p.progress = 100; }); render(); },
@@ -837,6 +875,7 @@ document.addEventListener('change', (e) => {
   if (t.dataset.actChange === 'import' && t.files?.[0]) { importBackup(t.files[0]); t.value = ''; return; }
   if (t.dataset.actChange === 'photos' && t.files?.length) { addPhotos(t.files); t.value = ''; return; }
   if (t.dataset.goalStatus) { const g = byId(S.goals, t.dataset.goalStatus); if (g) { g.status = t.value || null; save(); render(); } return; }
+  if (t.dataset.pipeTitle && ui.modal?.type === 'project') { pipeOf(ui.modal.id).title = t.value.trim(); save(); render(); return; }
   if (t.dataset.pfield && ui.modal?.type === 'project') {
     const k = t.dataset.pfield;
     editProject(ui.modal.id, (p) => { p[k] = k === 'progress' ? Number(t.value) : k === 'deadline' ? (t.value || null) : t.value; });
