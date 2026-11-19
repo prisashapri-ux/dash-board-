@@ -47,6 +47,7 @@ export async function loadState() {
 
 let timer = null;
 let pending = null;
+let writing = Promise.resolve(true);
 
 async function write(state) {
   try {
@@ -83,10 +84,11 @@ export function saveState(state) {
 
 export function flush() {
   clearTimeout(timer);
-  if (!pending) return Promise.resolve(true);
-  const s = pending;
+  if (!pending) return writing;
+  const s = JSON.parse(JSON.stringify(pending));
   pending = null;
-  return write(s);
+  writing = writing.catch(() => false).then(() => write(s));
+  return writing;
 }
 
 /** Просит браузер не удалять данные при нехватке места. */
