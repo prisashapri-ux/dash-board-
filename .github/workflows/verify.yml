@@ -14,3 +14,9 @@ jobs:
           node-version: 22
       - run: npm test
       - run: npm run build
+      - name: Установить браузеры для проверки
+        run: |
+          npm install --no-save --package-lock=false playwright@1.55.0
+          npx playwright install --with-deps chromium webkit
+      - name: Проверка компоновки и сохранения
+        run: node scripts/check-layout.mjs

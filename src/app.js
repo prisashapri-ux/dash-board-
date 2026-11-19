@@ -657,7 +657,7 @@ async function restoreSnapshot() {
 const TABS = [['home', '🏠', 'Главная'], ['projects', '📁', 'Проекты'], ['tasks', '✅', 'Задачи'], ['cal', '📅', 'Календарь'], ['notes', '📝', 'Заметки'], ['news', '📰', 'Новости'], ['shifts', '🧋', 'Смены'], ['more', '⋯', 'Ещё']];
 const VIEWS = { home: homeView, projects: projectsView, tasks: tasksView, cal: calView, notes: notesView, news: newsView, shifts: shiftsView, more: moreView };
 function renderTabs() {
-  $('#tabs').innerHTML = TABS.map(([k, ic, t]) => `<button class="${ui.tab === k ? 'on' : ''}" data-tab="${k}" aria-label="${t}"><span class="ic">${ic}</span>${t}</button>`).join('');
+  $('#tabs').innerHTML = TABS.map(([k, ic, t]) => `<button class="${ui.tab === k ? 'on' : ''}" data-tab="${k}" aria-label="${t}"${ui.tab === k ? ' aria-current="page"' : ''}><span class="ic" aria-hidden="true">${ic}</span>${t}</button>`).join('');
 }
 function renderModal() {
   const m = $('#modal'), md = ui.modal;
