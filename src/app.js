@@ -1,5 +1,6 @@
 import * as L from './logic.js';
-import { loadState, saveState, flush, persist, saveSnapshot, loadPhotos, savePhotos } from './store.js';
+import { loadState, saveState, flush, persist, saveSnapshot, loadSnapshot, loadPhotos, savePhotos } from './store.js';
+import { makeBackup, encodeBackup, decodeBackup, sourceFreshness } from './backup.js';
 import { setKeepAwake } from './awake.js';
 
 const VERSION = new URL(import.meta.url).searchParams.get('v') || 'dev';
@@ -15,7 +16,7 @@ function defaults() {
     finance: { entries: [], budget: 0 },
     settings: { ...L.DEFAULT_SETTINGS },
     projects: [], remote: { updated: null, projects: [] }, weather: null, claude: null,
-    goals: [], countdowns: [], journal: {}, shopping: [], menu: ['', '', '', '', '', '', ''], rates: null, news: null, savedNews: [], schedule: null, calendar: null, pipes: {},
+    goals: [], countdowns: [], journal: {}, shopping: [], menu: ['', '', '', '', '', '', ''], rates: null, news: null, savedNews: [], schedule: null, calendar: null, pipes: {}, knowledge: [], channelStats: [],
     routines: { morning: L.DEFAULT_ROUTINES.morning.map((title, i) => ({ id: 'rm' + (i + 1), title })), evening: L.DEFAULT_ROUTINES.evening.map((title, i) => ({ id: 're' + (i + 1), title })), checks: {} },
   };
 }
@@ -31,7 +32,7 @@ function normalize(raw) {
     habits: { list: Array.isArray(r.habits?.list) ? r.habits.list : d.habits.list, checks: r.habits?.checks || {} },
     finance: { entries: Array.isArray(r.finance?.entries) ? r.finance.entries : [], budget: Number(r.finance?.budget) || 0 },
     settings: { ...d.settings, ...(r.settings || {}), newsHidden: Array.isArray(r.settings?.newsHidden) ? r.settings.newsHidden : [] },
-    projects: Array.isArray(r.projects) ? r.projects : [],
+    projects: Array.isArray(r.projects) ? r.projects : [], knowledge: Array.isArray(r.knowledge) ? r.knowledge : [], channelStats: Array.isArray(r.channelStats) ? r.channelStats : [],
     remote: r.remote?.projects ? r.remote : d.remote,
     goals: Array.isArray(r.goals) ? r.goals : [], countdowns: Array.isArray(r.countdowns) ? r.countdowns : [],
     journal: r.journal && typeof r.journal === 'object' ? r.journal : {}, shopping: Array.isArray(r.shopping) ? r.shopping : [],
@@ -42,7 +43,7 @@ function normalize(raw) {
   };
 }
 const save = () => saveState(S);
-const projects = () => L.mergeProjects(S.remote.projects, S.projects, S.remote.removed || []);
+const projects = () => S.settings.privateProjects ? S.projects : L.mergeProjects(S.remote.projects, S.projects, S.remote.removed || []);
 // Все задачи по дням: личные и задачи проектов со сроком.
 const allTasks = () => S.tasks.concat(L.projectDatedTasks(projects()));
 const projectById = (id) => projects().find((p) => p.id === id);
@@ -389,8 +390,21 @@ ${S.finance.budget ? `<div class="kv"><span>Осталось</span><b style="col
 <section class="card"><h2>Записи за месяц</h2>${list.map((e) => `<div class="item"><div class="grow">${money(e.amount)} <span class="chip">${esc(e.category)}</span><div class="muted tiny">${L.formatShortRu(e.date)}${e.note ? ' · ' + esc(e.note) : ''}</div></div><button class="btn ghost danger" data-act="fin-del" data-id="${esc(e.id)}" aria-label="Удалить">✕</button></div>`).join('') || '<div class="empty">Трат пока нет</div>'}</section>`;
 }
 function statsView() {
-  return `<section class="card"><h2>Статистика Twitch и YouTube</h2><p class="muted">Подключим позже — нужны ключи API.</p><p class="muted tiny">Пока можно сохранить названия каналов.</p>
-<form data-form="save-stats"><label class="lbl">Twitch-канал</label><input name="twitch" value="${esc(S.settings.twitch)}" placeholder="deadsints" autocomplete="off"><label class="lbl">YouTube-канал</label><input name="youtube" value="${esc(S.settings.youtube)}" placeholder="@название" autocomplete="off"><div style="margin-top:10px"><button class="btn primary">Сохранить</button></div></form></section>`;
+  const rows = S.channelStats.slice().reverse().map(x => `<div class="item"><span>${esc(x.date)} · ${esc(x.platform)} · ${esc(x.metric)}</span><b>${esc(x.value)}</b></div>`).join('');
+  return `<section class="card"><h2>Статистика каналов</h2><p class="muted">Здесь можно вести историю показателей вручную до подключения официальных API.</p>
+<form data-form="save-stats"><label class="lbl">Twitch-канал</label><input name="twitch" value="${esc(S.settings.twitch)}" autocomplete="off"><label class="lbl">YouTube-канал</label><input name="youtube" value="${esc(S.settings.youtube)}" placeholder="@название" autocomplete="off"><div style="margin-top:10px"><button class="btn primary">Сохранить</button></div></form><div class="row gap wrap"><a class="btn" href="https://dashboard.twitch.tv/" target="_blank" rel="noopener noreferrer">Twitch Studio</a><a class="btn" href="https://studio.youtube.com/" target="_blank" rel="noopener noreferrer">YouTube Studio</a></div></section>
+<section class="card"><h2>Добавить показатель</h2><form data-form="add-stat"><label class="lbl">Платформа</label><select name="platform"><option>Twitch</option><option>YouTube</option></select><label class="lbl">Показатель</label><input name="metric" required placeholder="Подписчики, просмотры"><label class="lbl">Значение</label><input name="value" type="number" min="0" required><label class="lbl">Дата</label><input name="date" type="date" value="${todayISO()}" required><button class="btn primary">Добавить</button></form></section><section class="card"><h2>История</h2>${rows || '<p class="muted">Нет записей</p>'}</section>`;
+}
+
+function aiView() {
+  return `<section class="card"><h2>Центр ИИ</h2><p class="muted">Запускай нужный сервис. Данные Пульта не отправляются автоматически.</p><div class="row gap wrap"><a class="btn primary" href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">ChatGPT</a><a class="btn" href="https://claude.ai/" target="_blank" rel="noopener noreferrer">Claude</a></div></section>
+<section class="card"><h2>Команды для ChatGPT</h2><p>Work Coordinator — управление проектами; Task Backlog — задачи; Fact Check — проверка фактов; Knowledge Retrieval — поиск по заметкам; Business Report Writer — отчёты.</p><button class="btn primary" data-act="copy-ai-brief">Скопировать шаблон поручения</button></section>`;
+}
+
+function knowledgeView() {
+  const groups = ['Проекты', 'Области', 'Ресурсы', 'Архив'];
+  const query = (ui.knowledgeQuery || '').toLowerCase();
+  return `<section class="card"><h2>База знаний</h2><form data-form="add-knowledge"><label class="lbl">Название</label><input name="title" required><label class="lbl">Раздел</label><select name="category">${groups.map(g => `<option>${g}</option>`).join('')}</select><label class="lbl">Связанный проект</label><select name="projectId">${projectOptions('')}</select><label class="lbl">Содержание и источник</label><textarea name="text" required></textarea><button class="btn primary">Сохранить</button></form><form data-form="search-knowledge" class="addrow"><input name="q" type="search" placeholder="Поиск в базе знаний" value="${esc(ui.knowledgeQuery || '')}"><button class="btn">Найти</button></form></section>${groups.map(g => `<section class="card"><h2>${g}</h2>${S.knowledge.filter(x => x.category === g && (x.title + ' ' + x.text).toLowerCase().includes(query)).map(x => `<div class="item"><div><b>${esc(x.title)}</b><div class="note">${esc(x.text)}</div>${x.projectId && projectById(x.projectId) ? `<button class="btn small" data-act="open-project" data-id="${esc(x.projectId)}">${esc(projectById(x.projectId).name)}</button>` : ''}</div><button class="btn small ghost danger" data-act="knowledge-delete" data-id="${esc(x.id)}">Удалить</button></div>`).join('') || '<p class="muted">Нет записей</p>'}</section>`).join('')}`;
 }
 function routinesView() {
   const edit = ui.routineEdit;
@@ -441,9 +455,11 @@ ${ui.cityResults ? (ui.cityResults.length ? ui.cityResults.map((c, i) => `<div c
 <section class="card"><h2>Резервная копия</h2><p class="muted">Данные лежат только на этом устройстве. Сохрани копию, чтобы перенести их или не потерять.</p>
 <div class="row wrap gap"><button class="btn primary" data-act="export-copy">Скопировать в буфер</button><a class="btn" id="dl" download="pult-backup.json" href="${backupUrl()}" style="display:inline-block;line-height:28px;text-decoration:none;color:var(--text)">Скачать файл</a></div>
 <label class="lbl" style="margin-top:12px">Загрузить копию из файла (заменит данные)</label><input type="file" accept="application/json,.json" data-act-change="import"></section>
+<section class="card"><h2>Защищённый перенос данных</h2><p class="muted">Зашифруй резервную копию перед переносом на другое устройство. Пароль копии храни отдельно. Пароль календаря в копию не входит.</p><div class="row gap wrap"><button class="btn primary" data-act="export-encrypted">Зашифровать и скачать</button><button class="btn" data-act="restore-snapshot">Вернуть данные до импорта</button></div></section>
 <section class="card"><h2>Лимиты Claude</h2><p class="muted">ID гиста, куда строка состояния Claude Code на ПК пишет лимиты. Как настроить — в README репозитория, раздел «Лимиты Claude».</p>
 <form data-form="save-claude" class="addrow"><input class="wide" name="gist" value="${esc(s.claudeGist)}" placeholder="например, 3f2a…c91" autocomplete="off"><button class="btn primary">Сохранить</button></form></section>
 <section class="card"><h2>Проекты</h2><p class="muted">projects.json обновлён: <b>${esc(S.remote.updated || 'ещё не загружен')}</b></p><button class="btn" data-act="projects-refresh">Обновить проекты</button></section>
+<section class="card"><h2>Личные проекты</h2><p class="muted">${s.privateProjects ? 'Проекты хранятся на устройстве, публичный список не загружается.' : 'Можно перенести текущие проекты в локальное хранилище и отключить публичный источник.'}</p>${s.privateProjects ? '' : '<button class="btn primary" data-act="private-projects">Перенести проекты на устройство</button>'}</section>
 <section class="card"><h2>Обновления</h2><p class="muted">Пульт обновляется сам: новая версия скачивается в фоне, и страница перезагружается, когда ты ничего не вводишь. Кнопка ниже — если хочется прямо сейчас.</p><button class="btn" data-act="app-update">Обновить Пульт</button><p class="muted tiny" style="margin-top:8px">Версия ${esc(VERSION)}</p></section>`;
 }
 /* ---------- График смен ---------- */
@@ -463,7 +479,7 @@ function schStatus() {
   const s = S.schedule;
   if (ui.schState === 'loading' && !s) return 'Загружаю график…';
   if (!s) return ui.schState === 'fail' ? `Не удалось загрузить график: ${esc(ui.schError || 'нет сети')}` : 'График ещё не загружен';
-  return `Таблица прочитана ${esc(L.timeAgoRu(s.fetchedAt || new Date(s.at).toISOString()))}${ui.schState === 'fail' ? ` · <span class="warnc">сейчас не обновился (${esc(ui.schError || 'нет сети')}), показан сохранённый</span>` : ''}`;
+  return `Таблица прочитана ${esc(L.timeAgoRu(s.fetchedAt || new Date(s.at).toISOString()))}${sourceFreshness(s.fetchedAt) !== 'fresh' ? ' · <span class="warnc">источник требует обновления</span>' : ''}${ui.schState === 'fail' ? ` · <span class="warnc">сейчас не обновился (${esc(ui.schError || 'нет сети')}), показан сохранённый</span>` : ''}`;
 }
 function changesBlock(limit) {
   const ch = (S.schedule && S.schedule.changes) || [];
@@ -534,7 +550,7 @@ function calStatus() {
   const c = S.calendar;
   if (ui.calState === 'loading' && !c) return 'Загружаю календарь…';
   if (!c) return ui.calState === 'fail' ? `Не удалось загрузить календарь: ${esc(ui.calError || 'нет сети')}` : 'Календарь ещё не загружен';
-  return `Google Календарь прочитан ${esc(L.timeAgoRu(c.fetchedAt || new Date(c.at).toISOString()))}${ui.calState === 'fail' ? ` · <span class="warnc">сейчас не обновился (${esc(ui.calError || 'нет сети')}), показан сохранённый</span>` : ''}`;
+  return `Google Календарь прочитан ${esc(L.timeAgoRu(c.fetchedAt || new Date(c.at).toISOString()))}${sourceFreshness(c.fetchedAt) !== 'fresh' ? ' · <span class="warnc">источник требует обновления</span>' : ''}${ui.calState === 'fail' ? ` · <span class="warnc">сейчас не обновился (${esc(ui.calError || 'нет сети')}), показан сохранённый</span>` : ''}`;
 }
 function evRow(x) {
   return `<div class="item evrow"><span class="evtime">${esc(L.eventTime(x))}</span><span class="evbar" style="background:${esc(x.col)}"></span><div class="grow">${x.isPlan ? '<span class="planmark">план</span> ' : ''}${esc(x.t)}${x.plan ? `<div class="evplan">▸ ${esc(x.plan)}</div>` : ''}${x.loc ? `<div class="muted tiny">${esc(x.loc)}</div>` : ''}</div></div>`;
@@ -576,13 +592,13 @@ function calView() {
 }
 
 function moreView() {
-  const subs = [['habits', 'Привычки'], ['routines', 'Рутины'], ['goals', 'Цели'], ['shopping', 'Покупки'], ['finance', 'Финансы'], ['stats', 'Статистика'], ['settings', 'Настройки']];
-  return `<div class="seg wrap">${subs.map(([k, t]) => `<button class="${ui.more === k ? 'on' : ''}" data-act="more" data-k="${k}">${t}</button>`).join('')}</div>${{ habits: habitsView, routines: routinesView, goals: goalsView, shopping: shoppingView, finance: financeView, stats: statsView, settings: settingsView }[ui.more]()}`;
+  const subs = [['habits', 'Привычки'], ['routines', 'Рутины'], ['goals', 'Цели'], ['shopping', 'Покупки'], ['finance', 'Финансы'], ['stats', 'Статистика'], ['ai', 'Центр ИИ'], ['knowledge', 'База знаний'], ['settings', 'Настройки']];
+  return `<div class="seg wrap">${subs.map(([k, t]) => `<button class="${ui.more === k ? 'on' : ''}" data-act="more" data-k="${k}">${t}</button>`).join('')}</div>${{ habits: habitsView, routines: routinesView, goals: goalsView, shopping: shoppingView, finance: financeView, stats: statsView, ai: aiView, knowledge: knowledgeView, settings: settingsView }[ui.more]()}`;
 }
 
 /* ---------- Резервная копия ---------- */
 function backupObject() {
-  return { app: 'pult', version: 1, exportedAt: new Date().toISOString(), data: { tasks: S.tasks, notes: S.notes, habits: S.habits, finance: S.finance, settings: S.settings, projects: S.projects, goals: S.goals, countdowns: S.countdowns, journal: S.journal, routines: S.routines, shopping: S.shopping, menu: S.menu, savedNews: S.savedNews, pipes: S.pipes } };
+  return makeBackup(S, projects());
 }
 let blobUrl = '';
 function backupUrl() {
@@ -602,20 +618,46 @@ function importBackup(file) {
   fr.onload = async () => {
     try {
       const j = JSON.parse(fr.result);
-      if (j?.app !== 'pult' || !j.data) throw new Error('не копия Пульта');
-      await saveSnapshot(S);
-      S = normalize({ ...j.data, remote: S.remote, weather: S.weather });
-      save(); render(); toast('Копия загружена');
+      const password = j?.app === 'pult-encrypted' ? prompt('Пароль резервной копии') : '';
+      if (password === null) return;
+      const data = await decodeBackup(j, password);
+      if (!confirm('Заменить данные на этом устройстве содержимым копии?')) return;
+      if (!await saveSnapshot(S)) throw new Error('Не удалось сохранить текущие данные перед заменой');
+      const previous = S;
+      S = normalize({ ...data, settings: { ...data.settings, scheduleKey: S.settings.scheduleKey }, remote: S.remote, weather: S.weather });
+      save(); if (!await flush()) { S = previous; throw new Error('Не удалось сохранить импорт'); }
+      render(); toast('Копия загружена');
     } catch (e) { toast('Не получилось: ' + e.message); }
   };
   fr.readAsText(file);
+}
+
+async function exportEncrypted() {
+  const password = prompt('Создай пароль резервной копии (не меньше 12 символов)');
+  if (password === null) return;
+  try {
+    const value = await encodeBackup(backupObject(), password);
+    const url = URL.createObjectURL(new Blob([JSON.stringify(value)], { type: 'application/json' }));
+    const link = document.createElement('a'); link.href = url; link.download = 'pult-encrypted-' + todayISO() + '.json'; document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast('Защищённая копия подготовлена');
+  } catch (e) { toast(e.message); }
+}
+
+async function restoreSnapshot() {
+  const snapshot = await loadSnapshot();
+  if (!snapshot?.state) { toast('Копия до восстановления не найдена'); return; }
+  if (!confirm('Вернуть данные до последнего импорта?')) return;
+  const previous = S;
+  S = normalize(snapshot.state);
+  save(); if (await flush()) { render(); toast('Данные восстановлены'); } else { S = previous; toast('Не удалось восстановить данные'); }
 }
 
 /* ---------- Отрисовка ---------- */
 const TABS = [['home', '🏠', 'Главная'], ['projects', '📁', 'Проекты'], ['tasks', '✅', 'Задачи'], ['cal', '📅', 'Календарь'], ['notes', '📝', 'Заметки'], ['news', '📰', 'Новости'], ['shifts', '🧋', 'Смены'], ['more', '⋯', 'Ещё']];
 const VIEWS = { home: homeView, projects: projectsView, tasks: tasksView, cal: calView, notes: notesView, news: newsView, shifts: shiftsView, more: moreView };
 function renderTabs() {
-  $('#tabs').innerHTML = TABS.map(([k, ic, t]) => `<button class="${ui.tab === k ? 'on' : ''}" data-tab="${k}" aria-label="${t}"><span class="ic">${ic}</span>${t}</button>`).join('');
+  $('#tabs').innerHTML = TABS.map(([k, ic, t]) => `<button class="${ui.tab === k ? 'on' : ''}" data-tab="${k}" aria-label="${t}"${ui.tab === k ? ' aria-current="page"' : ''}><span class="ic" aria-hidden="true">${ic}</span>${t}</button>`).join('');
 }
 function renderModal() {
   const m = $('#modal'), md = ui.modal;
@@ -706,6 +748,7 @@ async function addPhotos(files) {
 
 /* ---------- Данные: проекты и погода ---------- */
 async function fetchProjects(manual) {
+  if (S.settings.privateProjects) { if (manual) toast('Включено локальное хранение проектов'); return; }
   try {
     const r = await fetch('./projects.json', { cache: 'no-cache' });
     if (!r.ok) throw new Error('http ' + r.status);
@@ -867,6 +910,18 @@ const ACTS = {
   'claude-refresh': () => loadClaude(),
   'city-pick': (d) => { const c = ui.cityResults?.[Number(d.i)]; if (!c) return; Object.assign(S.settings, { city: c.name, lat: c.latitude, lon: c.longitude }); ui.cityResults = null; S.weather = null; save(); render(); loadWeather(true); toast('Город: ' + c.name); },
   'export-copy': copyBackup,
+  'export-encrypted': exportEncrypted,
+  'private-projects': async () => {
+    if (!confirm('Перенести текущие проекты в локальное хранилище и отключить публичное обновление?')) return;
+    const next = projects();
+    if (!next.length) { toast('Сначала загрузи проекты'); return; }
+    if (!await saveSnapshot(S)) { toast('Не удалось создать копию'); return; }
+    S.projects = JSON.parse(JSON.stringify(next)); S.remote = { updated: null, projects: [] }; S.settings.privateProjects = true;
+    save(); if (await flush()) { render(); toast('Локальное хранение включено'); }
+  },
+  'restore-snapshot': restoreSnapshot,
+  'copy-ai-brief': async () => { try { await navigator.clipboard.writeText('Используй Work Coordinator. Цель: [цель]. Текущий результат: [статус]. Подготовь план, задачи и критерии готовности.'); toast('Шаблон скопирован'); } catch { toast('Буфер обмена недоступен'); } },
+  'knowledge-delete': (d) => { if (!confirm('Удалить запись из базы знаний?')) return; S.knowledge = S.knowledge.filter(x => x.id !== d.id); save(); render(); },
   'rates-refresh': () => loadRates(true),
   'news-refresh': () => loadNews(true),
   'sch-refresh': () => loadSchedule(true),
@@ -924,6 +979,9 @@ const FORMS = {
   'save-schkey': (f, el) => { S.settings.scheduleKey = fd(el).key; S.schedule = null; S.calendar = null; toast('Пароль сохранён, загружаю график и календарь'); loadSchedule(true); loadCalendar(true); },
   'save-claude': (f, el) => { S.settings.claudeGist = fd(el).gist.trim().replace(/^.*gist\.github\.com\/[^/]+\//, '').replace(/[^a-zA-Z0-9]/g, ''); S.claude = null; toast('Сохранено'); loadClaude(); },
   'save-stats': (f, el) => { const v = fd(el); S.settings.twitch = v.twitch.trim(); S.settings.youtube = v.youtube.trim(); toast('Сохранено'); },
+  'add-stat': (f, el) => { const v = fd(el); S.channelStats.push({ date: v.date, platform: v.platform, metric: v.metric.trim(), value: Number(v.value) }); },
+  'add-knowledge': (f, el) => { const v = fd(el); S.knowledge.push({ id: uid(), title: v.title.trim(), category: v.category, text: v.text.trim(), projectId: v.projectId, createdAt: stamp() }); },
+  'search-knowledge': (f, el) => { ui.knowledgeQuery = fd(el).q.trim(); return 'keep'; },
   'city-search': (f, el) => { searchCity(fd(el).q.trim()); return 'skip'; },
   'add-goal': (f, el) => { const v = fd(el); S.goals.push({ id: uid(), title: v.title.trim(), period: v.period, status: null }); },
   'add-cd': (f, el) => { const v = fd(el); S.countdowns.push({ id: uid(), title: v.title.trim(), date: v.date }); },
